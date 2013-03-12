@@ -3,10 +3,7 @@ package deployment
 import magenta.json.JsonReader
 import java.io.File
 import magenta._
-import akka.actor._
 import controllers.Logging
-import akka.util.duration._
-import akka.util.Timeout
 import akka.actor.SupervisorStrategy.Restart
 import akka.pattern.ask
 import tasks.Task
@@ -14,9 +11,19 @@ import java.util.UUID
 import magenta.teamcity.Artifact.build2download
 import collection.mutable.ListBuffer
 import akka.routing.RoundRobinRouter
-import akka.dispatch.Await
 import com.typesafe.config.ConfigFactory
 import scala.collection.JavaConversions._
+import scala.concurrent.duration._
+import concurrent.Await
+import akka.actor._
+import magenta.Deploy
+import scala.Some
+import akka.actor.OneForOneStrategy
+import deployment.UniqueTask
+import deployment.DeployRunState
+import magenta.KeyRing
+import magenta.MessageBrokerContext
+import akka.actor.Terminated
 
 object DeployControlActor extends Logging {
   trait Event
@@ -56,9 +63,8 @@ object DeployControlActor extends Logging {
 
   def getDeployStopFlag(uuid: UUID): Option[Boolean] = {
     try {
-      implicit val timeout = Timeout(100 milliseconds)
       val stopFlag = deployCoordinator ? CheckStopFlag(uuid) mapTo manifest[Boolean]
-      Some(Await.result(stopFlag, timeout.duration))
+      Some(Await.result(stopFlag, 100 millis))
     } catch {
       case t:Throwable => None
     }
@@ -334,9 +340,8 @@ class TaskRunner extends Actor with Logging {
       try {
         def stopFlagAsker: Boolean = {
           try {
-            implicit val timeout = Timeout(200 milliseconds)
             val stopFlag = sender ? DeployCoordinator.CheckStopFlag(record.uuid) mapTo manifest[Boolean]
-            Await.result(stopFlag, timeout.duration)
+            Await.result(stopFlag, 200 millis)
           } catch {
             // assume false if something goes wrong
             case t:Throwable => false
