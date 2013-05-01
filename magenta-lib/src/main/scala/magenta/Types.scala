@@ -6,6 +6,7 @@ import net.liftweb.json.JsonAST._
 import net.liftweb.json.Implicits._
 import java.io.File
 import scala.PartialFunction
+import java.util.NoSuchElementException
 
 trait PackageType {
   def name: String
@@ -235,4 +236,38 @@ case class DemoPackageType(pkg: Package) extends PackageType {
       EchoHello(host)
     )
   }
+}
+
+case class ExecutableJarPackageType(pkg: Package) extends PackageType {
+  def name = ExecutableJarPackageType.name
+
+  lazy val user: String = pkg.stringData("user")
+  lazy val serviceName = pkg.stringData("servicename")
+  lazy val packageArtifactDir = pkg.srcDir.getPath + "/"
+
+  lazy val jarFilename = new File(pkg.stringData("jarFilename")).getName
+  lazy val args = pkg.arrayStringData("args")  // TODO: make it possible to add to these from CLI/Riff Raff
+
+  override val perHostActions: HostActionDefinition = {
+    case "run" => {
+      host => {
+        val tmpDir = "/tmp/execute-jar-%d/".format(compat.Platform.currentTime)
+        List(
+          Mkdir(host as user, tmpDir),
+          CopyFile(host as user, packageArtifactDir + jarFilename, tmpDir),
+          ExecuteJar(host as user, tmpDir + jarFilename, args),
+          RmTmpdir(host as user, tmpDir)
+        )
+      }
+    }
+  }
+
+  override def defaultData = Map[String, JValue](
+    "user" -> "jvmuser",
+    "servicename" -> pkg.name,
+    "jarFilename" -> "%s.jar".format(pkg.name)
+  )
+}
+object ExecutableJarPackageType {
+  val name = "jar"
 }

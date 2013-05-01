@@ -217,4 +217,12 @@ case class Mkdir(host: Host, path: String) extends RemoteShellTask {
 	def commandLine = List("/bin/mkdir", "-p", path)
 }
 
+case class RmTmpdir(host: Host, path: String) extends RemoteShellTask {
+  require(path.startsWith("/tmp/"), "This task can only remove directories under /tmp/")
 
+  def commandLine =  List("/bin/rm", "-rf", path)
+}
+
+case class ExecuteJar(host: Host, jarPath: String, args: List[String] = Nil) extends RemoteShellTask {
+  def commandLine = "/opt/jdk-1.6.0/bin/java" :: "-jar" :: jarPath :: args
+}

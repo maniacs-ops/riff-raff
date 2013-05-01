@@ -268,6 +268,37 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
     verifyNoMoreInteractions(s3Client)
   }
 
+  "The RmTmpdir task" should "fail to remove non-tmp dirs" in {
+    val host = Host("some-host") as ("some-user")
+
+    intercept[IllegalArgumentException] {
+      new RmTmpdir(host, "/not/in/tmp")
+    }
+  }
+  it should "have rm command for dir under /tmp" in {
+    val host = Host("some-host") as ("some-user")
+    val path = "/tmp/mydir"
+    val task = new RmTmpdir(host, path)
+
+    task.commandLine should be (CommandLine(List("/bin/rm", "-rf", path)))
+  }
+
+  "The ExecuteJar task" should "generate the java jar command" in {
+    val host = Host("some-host") as ("some-user")
+    val path = "/path/to/the/jar.jar"
+    val task = new ExecuteJar(host, path)
+
+    task.commandLine should be (CommandLine(List("/opt/jdk-1.6.0/bin/java", "-jar", path)))
+  }
+  it should "append the provided arguments" in {
+    val host = Host("some-host") as ("some-user")
+    val path = "/path/to/the/jar.jar"
+    val args = List("arg1", "arg2")
+    val task = new ExecuteJar(host, path, args)
+
+    task.commandLine should be (CommandLine(List("/opt/jdk-1.6.0/bin/java", "-jar", path, "arg1", "arg2")))
+  }
+
   private def createTempDir() = {
     val file = File.createTempFile("foo", "bar")
     file.delete()
