@@ -6,7 +6,7 @@ import magenta.DeployParameters
 import magenta.ReportTree
 import java.io.File
 import org.joda.time.{Interval, DateTime, Duration}
-import ci.ContinuousIntegration
+import ci.TeamCityContinuousIntegration
 import utils.VCSInfo
 import magenta.teamcity.Artifact
 import conf.Configuration
@@ -85,7 +85,7 @@ object DeployV2Record {
   def apply(taskType: TaskType.Value,
             uuid: UUID,
             parameters: DeployParameters ): DeployV2Record = {
-    val metaData = ContinuousIntegration.getMetaData(parameters.build.projectName, parameters.build.id)
+    val metaData = TeamCityContinuousIntegration.getMetaData(parameters.build.projectName, parameters.build.id)
     DeployV2Record(new DateTime(), taskType, uuid, parameters, metaData)
   }
 }
