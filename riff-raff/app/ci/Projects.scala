@@ -36,8 +36,8 @@ class TeamCityCI(serverHost: String) extends ContinuousIntegration {
   def listProjects = (TeamCityBuilds.buildTypes map { buildType: BuildType =>
     new ContinuousIntegrationProject {
       val name = buildType.fullName
-      def builds = TeamCityBuilds.successfulBuilds(buildType.project.name) map (bt =>
-        Build(name, bt.id.toString, buildType.)) //FIXME
+      def builds = TeamCityBuilds.successfulBuilds(name) map (bt =>
+        Build(name, bt.number, s"${bt.number} [${bt.branchName}] (${buildFormat.print(bt.startDate)})")) //FIXME
     }
   }).toSeq
 }
