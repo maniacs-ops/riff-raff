@@ -4,10 +4,10 @@ import notification.{HookConfig, HookAction, HookCriteria}
 import play.api.Play.maybeApplication
 import play.api.Logger
 import controllers.{ApiKey, AuthorisationRecord, Logging}
-import magenta.Build
 import java.util.UUID
 import ci.ContinuousDeploymentConfig
 import conf.DatastoreMetrics.DatastoreRequest
+import magenta.contint.Build
 
 trait DataStore extends DocumentStore {
   def log: Logger

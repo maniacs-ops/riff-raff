@@ -7,7 +7,7 @@ import conf.Configuration
 import controllers.{ApiKey, AuthorisationRecord, Logging, SimpleDeployDetail}
 import play.api.Application
 import deployment.{PaginationView, DeployFilter}
-import magenta.{Build, RunState}
+import magenta.RunState
 import scala.Some
 import com.mongodb.casbah.commons.conversions.scala.RegisterJodaTimeConversionHelpers
 import notification.{HookConfig, HookAction, HookCriteria}
@@ -16,6 +16,7 @@ import org.joda.time.DateTime
 import com.mongodb.casbah.query.Imports._
 import com.mongodb.util.JSON
 import ci.ContinuousDeploymentConfig
+import magenta.contint.Build
 
 trait MongoSerialisable[A] {
 

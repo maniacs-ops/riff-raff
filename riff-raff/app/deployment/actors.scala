@@ -22,6 +22,8 @@ import magenta.teamcity.Artifact
 import conf.{TaskMetrics, Configuration}
 import org.joda.time.DateTime
 import scala.util.Try
+import magenta.contint.TeamCityLocator
+import ci.RiffRaffArtifactLocator
 
 object DeployControlActor extends Logging {
   trait Event
@@ -268,7 +270,7 @@ class TaskRunner extends Actor with Logging {
     case PrepareDeploy(record, loggingContext) =>
       try {
         MessageBroker.withContext(loggingContext) {
-          val artifactDir = Artifact.download(Configuration.teamcity.serverURL, record.parameters.build)
+          val artifactDir = Artifact.download(RiffRaffArtifactLocator, record.parameters.build)
           MessageBroker.info("Reading deploy.json")
           val project = JsonReader.parse(new File(artifactDir, "deploy.json"))
           val context = record.parameters.toDeployContext(record.uuid, project, LookupSelector())

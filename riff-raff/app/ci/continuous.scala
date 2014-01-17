@@ -3,7 +3,7 @@ package ci
 import controllers.{Logging, DeployController}
 import lifecycle.LifecycleWithoutApp
 import java.util.UUID
-import magenta.{Build => MagentaBuild}
+import magenta.contint.{Build => MagentaBuild}
 import magenta.RecipeName
 import magenta.DeployParameters
 import magenta.Deployer
@@ -40,19 +40,20 @@ case class ContinuousDeploymentConfig(
 ) {
   lazy val branchRE = branchMatcher.map(re => "^%s$".format(re).r).getOrElse(".*".r)
   lazy val buildFilter =
-    (build: teamcity.Build) => build.buildType.fullName == projectName && branchRE.findFirstMatchIn(build.branchName).isDefined
+    (build: MagentaBuild) => build.projectName == projectName
+  //&& branchRE.findFirstMatchIn(build.branchName).isDefined
 
-  def findMatchOnSuccessfulBuild(builds: List[teamcity.Build]): Option[teamcity.Build] = {
+  def findMatchOnSuccessfulBuild(builds: List[MagentaBuild]): Option[MagentaBuild] = {
     if (trigger == Trigger.SuccessfulBuild) {
-      builds.filter(buildFilter).sortBy(-_.id).find { build =>
+      builds.filter(buildFilter).sortBy(-_.id.toInt).find { build =>
         val olderBuilds = TeamCityBuilds.successfulBuilds(projectName).filter(buildFilter)
         !olderBuilds.exists(_.id > build.id)
       }
     } else None
   }
-  def findMatchOnBuildTagged(builds: List[teamcity.Build], newTag: String): Option[teamcity.Build] = {
+  def findMatchOnBuildTagged(builds: List[MagentaBuild], newTag: String): Option[MagentaBuild] = {
     if (trigger == Trigger.BuildTagged && tag.get == newTag) {
-      builds.filter(buildFilter).sortBy(-_.id).headOption
+      builds.filter(buildFilter).sortBy(-_.id.toInt).headOption
     } else None
   }
   lazy val enabled = trigger != Trigger.Disabled
@@ -134,7 +135,7 @@ object ContinuousDeployment extends LifecycleWithoutApp with Logging {
       val newTrackers = required.map { toCreate =>
         val watcher = new TagWatcher {
           val tag = toCreate
-          def newBuilds(builds: List[teamcity.Build]) {
+          def newBuilds(builds: List[MagentaBuild]) {
             buildWatcher.foreach(_.newTags(builds, toCreate))
           }
         }
@@ -156,26 +157,26 @@ class ContinuousDeployment(domains: Domains) extends BuildWatcher with Logging {
 
   type ProjectCdMap = Map[String, Set[ContinuousDeploymentConfig]]
 
-  def getMatchesForSuccessfulBuilds(builds: List[teamcity.Build],
-                                    configs: Iterable[ContinuousDeploymentConfig]): Iterable[(ContinuousDeploymentConfig, teamcity.Build)] = {
+  def getMatchesForSuccessfulBuilds(builds: List[MagentaBuild],
+                                    configs: Iterable[ContinuousDeploymentConfig]): Iterable[(ContinuousDeploymentConfig, MagentaBuild)] = {
     configs.flatMap { config =>
       config.findMatchOnSuccessfulBuild(builds).map(build => config -> build)
     }
   }
 
-  def getMatchesForBuildTagged(builds: List[teamcity.Build],
+  def getMatchesForBuildTagged(builds: List[MagentaBuild],
                                tag: String,
-                               configs: Iterable[ContinuousDeploymentConfig]): Iterable[(ContinuousDeploymentConfig, teamcity.Build)] = {
+                               configs: Iterable[ContinuousDeploymentConfig]): Iterable[(ContinuousDeploymentConfig, MagentaBuild)] = {
     configs.flatMap { config =>
       config.findMatchOnBuildTagged(builds, tag).map(build => config -> build)
     }
   }
 
-  def getDeployParams(configBuildTuple:(ContinuousDeploymentConfig, teamcity.Build)): Option[DeployParameters] = {
+  def getDeployParams(configBuildTuple:(ContinuousDeploymentConfig, MagentaBuild)): Option[DeployParameters] = {
     val (config,build) = configBuildTuple
     val params = DeployParameters(
       Deployer("Continuous Deployment"),
-      MagentaBuild(build.buildType.fullName,build.number),
+      build,
       Stage(config.stage),
       RecipeName(config.recipe)
     )
@@ -197,12 +198,12 @@ class ContinuousDeployment(domains: Domains) extends BuildWatcher with Logging {
       log.info(s"Would deploy %{params.toString}")
   }
 
-  def newBuilds(newBuilds: List[teamcity.Build]) = {
+  def newBuilds(newBuilds: List[MagentaBuild]) = {
     log.info(s"New builds to consider for deployment $newBuilds")
     getMatchesForSuccessfulBuilds(newBuilds, getContinuousDeploymentList).flatMap{ getDeployParams }.foreach(runDeploy)
   }
 
-  def newTags(newBuilds: List[teamcity.Build], tag: String) = {
+  def newTags(newBuilds: List[MagentaBuild], tag: String) = {
     log.info(s"Builds just tagged with $tag to consider for deployment: $newBuilds")
     getMatchesForBuildTagged(newBuilds, tag, getContinuousDeploymentList).flatMap{ getDeployParams }.foreach(runDeploy)
   }

@@ -137,6 +137,10 @@ class Configuration(val application: String, val webappConfDirectory: String = "
     }
   }
 
+  object jenkins {
+    lazy val serverURL = Some("http://localhost:8080")
+  }
+
   object urls {
     lazy val publicPrefix: String = configuration.getStringProperty("urls.publicPrefix", "http://localhost:9000")
   }

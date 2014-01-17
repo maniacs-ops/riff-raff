@@ -19,6 +19,7 @@ import magenta._
 import play.api.mvc.BodyParsers.parse
 import java.util.UUID
 import utils.Json.DefaultJodaDateWrites
+import magenta.contint.Build
 
 case class ApiKey(
   application:String,
@@ -308,7 +309,7 @@ object Api extends Controller with Logging {
         val hosts = hostsOption.getOrElse(Nil)
         val params = DeployParameters(
           Deployer(request.identity.get.fullName),
-          Build(project, build),
+          Build(project, build, ""), // Need a build finder
           Stage(stage),
           recipe,
           hosts

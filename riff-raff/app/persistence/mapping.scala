@@ -7,6 +7,7 @@ import controllers.Logging
 import deployment.{DeployFilter, DeployV2Record, PaginationView}
 import magenta._
 import controllers.SimpleDeployDetail
+import magenta.contint.Build
 
 trait RecordConverter {
   def uuid:UUID
@@ -57,7 +58,7 @@ case class DocumentConverter(deploy: DeployRecordDocument, logs: Seq[LogDocument
 
   lazy val parameters = DeployParameters(
     Deployer(deploy.parameters.deployer),
-    Build(deploy.parameters.projectName, deploy.parameters.buildId),
+    Build(deploy.parameters.projectName, deploy.parameters.buildId, ""),
     Stage(deploy.parameters.stage),
     RecipeName(deploy.parameters.recipe),
     deploy.parameters.hostList

@@ -1,12 +1,12 @@
 package deployment
 
+import _root_.ci.TeamCityContinuousIntegration
 import java.util.UUID
 import magenta._
 import magenta.DeployParameters
 import magenta.ReportTree
 import java.io.File
 import org.joda.time.{Interval, DateTime, Duration}
-import ci.TeamCityContinuousIntegration
 import utils.VCSInfo
 import magenta.teamcity.Artifact
 import conf.Configuration
@@ -67,9 +67,6 @@ trait Record {
 
   def loggingContext[T](block: => T): T = {
     MessageBroker.deployContext(uuid, parameters) { block }
-  }
-  def withDownload[T](block: File => T): T = {
-    Artifact.withDownload(Configuration.teamcity.serverURL, parameters.build)(block)
   }
 
   lazy val hoursAgo: Long = new Interval(time, new DateTime()).toDuration.getStandardHours

@@ -9,7 +9,6 @@ import magenta.json.JsonReader
 import controllers.routes
 import magenta.DeployParameters
 import magenta.Project
-import magenta.Build
 import tasks.{ Task => MagentaTask }
 import magenta.teamcity.Artifact
 import java.util.UUID
@@ -19,6 +18,8 @@ import conf.Configuration
 import scala.concurrent._
 import akka.actor.ActorSystem
 import ExecutionContext.Implicits.global
+import magenta.contint.{TeamCityLocator, Build}
+import ci.RiffRaffArtifactLocator
 
 case class PreviewResult(future: Future[Preview], startTime: DateTime = new DateTime()) {
   def completed = future.isCompleted
@@ -50,7 +51,8 @@ object PreviewController {
 
 object Preview {
   def getJsonFromStore(build: Build): Option[String] = Persistence.store.getDeployJson(build)
-  def getJsonFromArtifact(build: Build): String = Artifact.withDownload(Configuration.teamcity.serverURL, build) { artifactDir =>
+  def getJsonFromArtifact(build: Build): String = Artifact.withDownload(
+    RiffRaffArtifactLocator, build) { artifactDir =>
     Source.fromFile(new File(artifactDir, "deploy.json")).getLines().mkString
   }
   def parseJson(json:String) = JsonReader.parse(json, new File(System.getProperty("java.io.tmpdir")))

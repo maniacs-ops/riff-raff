@@ -11,13 +11,14 @@ import play.api.data.Form
 import play.api.data.Forms._
 import org.joda.time.DateTime
 import persistence.{DocumentStoreConverter, Persistence}
+import magenta.contint.Build
 
 case class SimpleDeployDetail(uuid: UUID, time: Option[DateTime])
 
 object Testing extends Controller with Logging {
   def reportTestPartial(take: Int, verbose: Boolean) = NonAuthAction { implicit request =>
     val logUUID = UUID.randomUUID()
-    val parameters = DeployParameters(Deployer("Simon Hildrew"), Build("tools::deploy", "131"), Stage("DEV"), DefaultRecipe())
+    val parameters = DeployParameters(Deployer("Simon Hildrew"), Build("tools::deploy", "131", ""), Stage("DEV"), DefaultRecipe())
 
     val testTask1 = new Task {
       def execute(sshCredentials: KeyRing, stopFlag: => Boolean) {}
