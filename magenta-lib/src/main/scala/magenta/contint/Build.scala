@@ -14,7 +14,7 @@ trait ArtifactLocator {
 class CompositeArtifactLocator(locators: Seq[ArtifactLocator]) extends ArtifactLocator {
   def location(build: Build) = (locators map (locator => locator.location(build)) filter { uri: URI =>
     (Try {
-      Http(url(uri.toString) >|)
+      Http(url(uri.toString).HEAD >|)
       true
     } recover {
       case e => {
