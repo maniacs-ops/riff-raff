@@ -19,9 +19,7 @@ object Artifact {
     dir
   }
 
-  def download(artifactLocator: ArtifactLocator,
-//                teamcity: Option[URL],
-               dir: File, build: Build) {
+  def download(artifactLocator: ArtifactLocator, dir: File, build: Build) {
     MessageBroker.info("Downloading artifact")
     val http = new Http {
       override def make_logger = new Logger {

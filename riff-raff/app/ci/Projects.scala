@@ -9,10 +9,12 @@ import play.api.libs.ws.WS
 import ci.teamcity.BuildType
 import scala.concurrent.duration._
 import magenta.contint.Build
+import play.api.libs.json.JsArray
 
 object Projects {
   val ciProviders = Configuration.teamcity.serverURL.map(u => new TeamCityCI(u.toString)).toSeq ++
-                    Configuration.jenkins.serverURL.map(new JenkinsCI(_))
+                    Configuration.jenkins.serverURL.map(new JenkinsCI(_)) ++
+                    Some(new TravisCI())
 
   def withName(name: String): Option[ContinuousIntegrationProject] = all.find(_.name == name)
 
@@ -78,10 +80,31 @@ class JenkinsCI(serverHost: String) extends ContinuousIntegration {
   }
 }
 
+class TravisCI extends ContinuousIntegration {
+
+  import ExecutionContext.Implicits.global //FIXME
+
+  def listProjects = {
+    Await.result(WS.url("https://api.travis-ci.org/repos/guardian").get map { r =>
+      r.json match {
+        case JsArray(builds) => builds map { build =>
+          val slug = (build \ "slug").as[String]
+          val lastBuildNumber = (build \ "last_build_number").as[String]
+          new ContinuousIntegrationProject {
+            val name = slug
+            val builds = Seq(Build(name, lastBuildNumber, lastBuildNumber))
+          }
+        }
+      }
+    }, 10.seconds)
+  }
+}
+
 object RiffRaffArtifactLocator extends ArtifactLocator {
   lazy val locator = new CompositeArtifactLocator(Seq(
     new TeamCityLocator(Configuration.teamcity.serverURL.get.toString),
-    new JenkinsLocator(Configuration.jenkins.serverURL.get)
+    new JenkinsLocator(Configuration.jenkins.serverURL.get),
+    new TravisCILocator("")
   ))
   def location(build: Build) = locator.location(build)
 }
