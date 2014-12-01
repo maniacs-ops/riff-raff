@@ -8,8 +8,8 @@ import org.json4s._
 import org.json4s.native.JsonMethods._
 import com.gu.fastly.api.FastlyApiClient
 
-import scala.concurrent.ExecutionContext
-import scala.concurrent.Future
+import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.concurrent.duration._
 import scala.async.Async.{async, await}
 import scala.util.Success
 
@@ -23,15 +23,17 @@ case class UpdateFastlyConfig(pkg: DeploymentPackage)(implicit val keyRing: KeyR
 
     FastlyApiClientProvider.get(keyRing).map {
       client =>
-        async {
-          val activeVersionNumber = await(getActiveVersionNumber(client, stopFlag))
-          val nextVersionNumber = await(clone(activeVersionNumber, client, stopFlag))
-          deleteAllVclFilesFrom(nextVersionNumber, client, stopFlag).andThen {
-            case Success(_) => uploadNewVclFilesTo(nextVersionNumber, pkg.srcDir, client, stopFlag).andThen {
-              case Success(_)  => activateVersion(nextVersionNumber, client, stopFlag)
+        Await.result(
+          async {
+            val activeVersionNumber = await(getActiveVersionNumber(client, stopFlag))
+            val nextVersionNumber = await(clone(activeVersionNumber, client, stopFlag))
+            deleteAllVclFilesFrom(nextVersionNumber, client, stopFlag).andThen {
+              case Success(_) => uploadNewVclFilesTo(nextVersionNumber, pkg.srcDir, client, stopFlag).andThen {
+                case Success(_)  => activateVersion(nextVersionNumber, client, stopFlag)
+              }
             }
           }
-        }
+        , 10.minutes)
     }
   }
 
