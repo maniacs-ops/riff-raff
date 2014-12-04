@@ -1,5 +1,4 @@
 import play.PlayImport.PlayKeys._
-import sbtassembly.Plugin.AssemblyKeys._
 
 resolvers ++= Seq(
     "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots",
@@ -27,7 +26,6 @@ libraryDependencies ++= Seq(
 
 riffRaffPackageType := assembly.value
 
-assemblySettings
 mainClass in assembly := Some("play.core.server.NettyServer")
 fullClasspath in assembly += Attributed.blank(playPackageAssets.value)
 

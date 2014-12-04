@@ -1,7 +1,6 @@
 import sbt._
 import Keys._
-import sbtassembly.Plugin._
-import AssemblyKeys._
+import sbtassembly.AssemblyPlugin.autoImport._
 import play.twirl.sbt.Import._
 import com.typesafe.sbt.web.SbtWeb
 import com.gu.riffraff.artifact.RiffRaffArtifact
