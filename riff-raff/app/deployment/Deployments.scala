@@ -13,6 +13,7 @@ import magenta._
 import persistence.DocumentStoreConverter
 import play.api.libs.concurrent.Execution.Implicits._
 import rx.lang.scala.{Observable, Subject, Subscription}
+import vcs.VCSMetaData
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
@@ -94,10 +95,8 @@ object Deployments extends Logging with LifecycleWithoutApp {
   }
 
   def attachMetaData(record: Record) {
-    val metaData = Future {
-      ContinuousIntegration.getMetaData(record.buildName, record.buildId)
-    }
-    metaData.map { md =>
+    val metaData = VCSMetaData.forBuild(record.buildName, record.buildId)
+    metaData.foreach { md =>
       DocumentStoreConverter.addMetaData(record.uuid, md)
       Option(library()(record.uuid)) foreach { recordAgent =>
         recordAgent send { record =>

@@ -1,6 +1,7 @@
-package utils
+package vcs
 
 import java.net.URL
+
 import controllers.Logging
 
 trait VCSInfo {
@@ -13,7 +14,7 @@ trait VCSInfo {
   def treeUrl: URL
   def headUrl: URL
 
-  import VCSInfo._
+  import vcs.VCSInfo._
   def map: Map[String,String] = Map(
     REVISION -> revision,
     CIURL -> ciVcsUrl,

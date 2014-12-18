@@ -23,6 +23,8 @@ libraryDependencies ++= Seq(
   "org.parboiled" %% "parboiled" % "2.0.1",
   filters,
   ws,
+  "net.databinder.dispatch" %% "dispatch-core" % "0.11.2",
+  "net.databinder.dispatch" %% "dispatch-json4s-native" % "0.11.2",
   "org.scalatestplus" %% "play" % "1.2.0" % "test"
 )
 

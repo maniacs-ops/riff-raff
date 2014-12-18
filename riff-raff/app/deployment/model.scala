@@ -6,10 +6,13 @@ import magenta.DeployParameters
 import magenta.ReportTree
 import java.io.File
 import org.joda.time.{Interval, DateTime, Duration}
-import ci.ContinuousIntegration
-import utils.VCSInfo
 import magenta.teamcity.Artifact
 import conf.Configuration
+import vcs.{VCSMetaData, VCSInfo}
+
+import scala.concurrent.{Await, ExecutionContext}
+import scala.concurrent.duration._
+import scala.util.Try
 
 object Record {
   val RIFFRAFF_HOSTNAME = "riffraff-hostname"
@@ -104,9 +107,10 @@ trait Record {
 }
 
 object DeployRecord {
-  def apply(uuid: UUID,
-            parameters: DeployParameters ): DeployRecord = {
-    val metaData = ContinuousIntegration.getMetaData(parameters.build.projectName, parameters.build.id)
+  def apply(uuid: UUID, parameters: DeployParameters )(implicit ec: ExecutionContext): DeployRecord = {
+    val metaData = Try(Await.result(
+      VCSMetaData.forBuild(parameters.build.projectName, parameters.build.id), 10.seconds)
+    ).getOrElse(Map.empty)
     DeployRecord(new DateTime(), uuid, parameters, metaData)
   }
 }
