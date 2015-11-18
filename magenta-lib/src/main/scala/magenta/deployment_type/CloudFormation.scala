@@ -65,8 +65,6 @@ object CloudFormation extends DeploymentType with UpToDateImage {
     """.stripMargin
   ).default("AMI")
 
-  def latestImage(tags: Map[String, String])(implicit keyRing: KeyRing): Option[String] = ???
-
   override def perAppActions = {
     case "updateStack" => pkg => (lookup, parameters, stack) => {
       implicit val keyRing = lookup.keyRing(parameters.stage, pkg.apps.toSet, stack)
