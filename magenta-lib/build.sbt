@@ -7,6 +7,7 @@ resolvers ++= Seq(
 libraryDependencies ++= Seq(
     "net.databinder" %% "dispatch-http" % "0.8.10",
     "org.json4s" %% "json4s-native" % "3.2.11",
+    "org.yaml" % "snakeyaml" % "1.16",
     "org.bouncycastle" % "bcprov-jdk16" % "1.46",
     "org.bouncycastle" % "bcpg-jdk16" % "1.46",
     "com.decodified" %% "scala-ssh" % "0.7.0" exclude ("org.bouncycastle", "bcpkix-jdk15on"),

@@ -2,11 +2,13 @@ package magenta.tasks
 
 import com.amazonaws.AmazonServiceException
 import magenta.{MessageBroker, Stage, Stack, KeyRing}
+import magenta.yaml.YamlParser
 import com.amazonaws.regions.Regions
 import com.amazonaws.services.cloudformation.AmazonCloudFormationAsyncClient
 import com.amazonaws.services.cloudformation.model._
 import scalax.file.Path
 import collection.convert.wrapAsScala._
+import org.json4s.jackson.JsonMethods.{render, pretty}
 
 object UpdateCloudFormationTask {
   sealed trait ParameterValue
@@ -25,8 +27,15 @@ case class UpdateCloudFormationTask(
 
   import UpdateCloudFormationTask._
 
+  lazy val templateJson = {
+    if (template.path.endsWith(".yaml"))
+      pretty(render(YamlParser.toJson(template.string)))
+    else
+      template.string
+  }
+
   def execute(stopFlag: => Boolean) = if (!stopFlag) {
-    val templateParameters = CloudFormation.validateTemplate(template.string).getParameters
+    val templateParameters = CloudFormation.validateTemplate(templateJson).getParameters
       .map(tp => TemplateParameter(tp.getParameterKey, Option(tp.getDefaultValue).isDefined))
 
     val actualParameters: Map[String, ParameterValue] = combineParameters(templateParameters)
@@ -35,14 +44,14 @@ case class UpdateCloudFormationTask(
 
     if (CloudFormation.describeStack(cloudFormationStackName).isDefined)
       try {
-        CloudFormation.updateStack(cloudFormationStackName, template.string, actualParameters)
+        CloudFormation.updateStack(cloudFormationStackName, templateJson, actualParameters)
       } catch {
         case ase:AmazonServiceException if ase.getMessage contains "No updates are to be performed." =>
           MessageBroker.info("Cloudformation update has no changes to template or parameters")
       }
     else if (createStackIfAbsent) {
       MessageBroker.info(s"Stack $cloudFormationStackName doesn't exist. Creating stack.")
-      CloudFormation.createStack(cloudFormationStackName, template.string, actualParameters)
+      CloudFormation.createStack(cloudFormationStackName, templateJson, actualParameters)
     } else {
       MessageBroker.fail(s"Stack $cloudFormationStackName doesn't exist and createStackIfAbsent is false")
     }
