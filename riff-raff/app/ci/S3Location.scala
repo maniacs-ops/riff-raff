@@ -8,7 +8,11 @@ import scala.annotation.tailrec
 import scala.io.Source
 import scala.util.Try
 
-case class S3Location(bucket: String, path: String)
+case class S3Location(bucket: String, path: String) {
+
+  override def toString = s"s3://$bucket/$path"
+
+}
 
 object S3Location extends Logging {
   import collection.convert.wrapAsScala._

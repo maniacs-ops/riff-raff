@@ -36,7 +36,9 @@ object CIBuild extends Logging {
   lazy val newBuilds: Observable[CIBuild] =
     (for {
       location <- (Every(pollingPeriod)(Observable.from(S3Build.buildJsons))).distinct if !initialFiles.contains(location)
+      _ = log.debug(s"Found a new build location: $location")
       build <- Observable.from(S3Build.buildAt(location))
+      _ = log.debug(s"Found a new build: $build")
     } yield build).publish.refCount
 
   lazy val initialFiles: Seq[S3Location] = for {

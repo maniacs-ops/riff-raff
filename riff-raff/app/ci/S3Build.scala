@@ -27,6 +27,7 @@ object S3Build extends Logging {
   implicit lazy val client = Configuration.build.aws.client
 
   def buildJsons: Seq[S3Location] = Try {
+    log.debug("Polling S3 for a list of build.json files")
     S3Location.all(bucketName).filter(_.path.endsWith("build.json"))
   } recover {
     case NonFatal(e) =>
