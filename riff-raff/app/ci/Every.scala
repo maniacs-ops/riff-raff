@@ -1,6 +1,5 @@
 package ci
 
-import controllers.Logging
 import rx.lang.scala.Observable
 
 import scala.concurrent.duration._
@@ -25,12 +24,4 @@ trait ContinuousIntegrationAPI {
   def builds(job: Job)(implicit ec: ExecutionContext): Observable[CIBuild]
   def succesfulBuildBatch(job: Job)(implicit ec: ExecutionContext): Observable[Iterable[CIBuild]]
   def tags(build: CIBuild)(implicit ec: ExecutionContext): Future[Option[List[String]]]
-}
-
-object FailSafeObservable extends Logging {
-  def apply[T](f: Future[T], msg: => String)(implicit ec: ExecutionContext): Observable[T] =
-    Observable.from(f).onErrorResumeNext { e =>
-      log.error(msg, e)
-      Observable.empty
-    }
 }
