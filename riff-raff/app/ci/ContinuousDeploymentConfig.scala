@@ -1,10 +1,12 @@
 package ci
 
 import java.util.UUID
+
 import org.joda.time.DateTime
 import persistence.{MongoFormat, MongoSerialisable}
 import com.mongodb.casbah.commons.MongoDBObject
 import com.mongodb.casbah.commons.Implicits._
+import controllers.Logging
 
 object Trigger extends Enumeration {
   type Mode = Value
@@ -21,12 +23,24 @@ case class ContinuousDeploymentConfig(
                                        trigger: Trigger.Mode,
                                        user: String,
                                        lastEdited: DateTime = new DateTime()
-                                       ) {
+                                       ) extends  Logging {
   lazy val branchRE = branchMatcher.map(re => "^%s$".format(re).r).getOrElse(".*".r)
   lazy val buildFilter =
     (build:CIBuild) => build.jobName == projectName && branchRE.findFirstMatchIn(build.branchName).isDefined
 
   def findMatchOnSuccessfulBuild(build: CIBuild): Option[CIBuild] = {
+    if (projectName == "Mobile::mobile-static") {
+      if (build.jobName == projectName) {
+        log.info(s"Matched ${build.jobName}")
+      } else {
+        log.info(s"$projectName didn't match ${build.jobName}")
+      }
+      if (branchRE.findFirstMatchIn(build.branchName).isDefined) {
+        log.info(s"Matched branch ${build.branchName}")
+      } else {
+        log.info(s"$branchRE Didn't match ${build.branchName}")
+      }
+    }
     if (trigger == Trigger.SuccessfulBuild && buildFilter(build))
       Some(build)
     else None
