@@ -155,7 +155,7 @@ object DeployController extends Controller with Logging with LoginActions {
     val possibleProjects = Builds.successfulBuilds(project).filter(
       p => p.number.contains(term) || p.branchName.contains(term)
     ).map { build =>
-      val label = "%s [%s] (%s)" format(build.number, build.branchName, shortFormat.print(build.startTime))
+      val label = s"${build.number} [${build.branchName}] (${shortFormat.print(build.startTime)})"
       Map("label" -> label, "value" -> build.number)
     }
     Ok(Json.toJson(possibleProjects))
