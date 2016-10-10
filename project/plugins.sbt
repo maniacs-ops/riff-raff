@@ -10,3 +10,10 @@ addSbtPlugin("com.gu" % "sbt-teamcity-test-reporting-plugin" % "1.5")
 addSbtPlugin("com.gu" % "sbt-riffraff-artifact" % "0.9.4")
 
 addSbtPlugin("com.eed3si9n" % "sbt-buildinfo" % "0.6.1")
+
+addSbtPlugin("org.scala-js" % "sbt-scalajs" % "0.6.12")
+
+addSbtPlugin("com.vmunier" % "sbt-web-scalajs" % "1.0.2")
+
+addSbtPlugin("com.typesafe.sbt" % "sbt-digest" % "1.1.0")
+addSbtPlugin("com.typesafe.sbt" % "sbt-gzip" % "1.0.0")

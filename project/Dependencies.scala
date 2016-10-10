@@ -1,5 +1,6 @@
 import play.sbt.PlayImport._
 import sbt._
+import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
 
 object Dependencies {
 
@@ -45,7 +46,13 @@ object Dependencies {
     m.excludeAll(ExclusionRule(organization = "com.google.code.findbugs", name = "jsr305"))
   )
 
-  val riffRaffDeps = commonDeps ++ Seq(
+  val sharedRiffRaffDeps = Seq()
+
+  val riffRaffClientDeps = Def.setting(Seq(
+    "org.scala-js" %%% "scalajs-dom" % "0.9.1"
+  ))
+
+  val riffRaffServerDeps = commonDeps ++ Seq(
     "com.gu" %% "management-play" % Versions.guardianManagementPlay exclude("javassist", "javassist"), // http://code.google.com/p/reflections/issues/detail?id=140
     "com.gu" %% "management-logback" % Versions.guardianManagement,
     "com.gu" %% "configuration" % "4.0",

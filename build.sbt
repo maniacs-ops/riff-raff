@@ -4,7 +4,7 @@ import Helpers._
 val commonSettings = Seq(
   organization := "com.gu",
   scalaVersion := "2.11.8",
-  scalacOptions ++= Seq("-deprecation", "-feature", "-language:postfixOps,reflectiveCalls,implicitConversions"),
+  scalacOptions ++= Seq("-deprecation", "-feature", "-language:postfixOps,reflectiveCalls,implicitConversions", ""),
   version := "1.0",
   resolvers ++= Seq(
     "Typesafe Releases" at "http://repo.typesafe.com/typesafe/releases/",
@@ -13,7 +13,7 @@ val commonSettings = Seq(
 )
 
 lazy val root = project.in(file("."))
-  .aggregate(lib, riffraff)
+  .aggregate(lib, riffRaffServer)
 
 lazy val lib = project.in(file("magenta-lib"))
   .settings(commonSettings)
@@ -25,8 +25,8 @@ lazy val lib = project.in(file("magenta-lib"))
     testOptions in Test += Tests.Argument("-oF")
   ))
 
-lazy val riffraff = project.in(file("riff-raff"))
-  .dependsOn(lib)
+lazy val riffRaffServer = project.in(file("riff-raff"))
+  .dependsOn(lib, riffRaffSharedJvm)
   .enablePlugins(PlayScala, BuildInfoPlugin, RiffRaffArtifact)
   .settings(commonSettings)
   .settings(Seq(
@@ -48,7 +48,7 @@ lazy val riffraff = project.in(file("riff-raff"))
     buildInfoPackage := "riffraff",
 
     resolvers += "Brian Clapper Bintray" at "http://dl.bintray.com/bmc/maven",
-    libraryDependencies ++= riffRaffDeps,
+    libraryDependencies ++= riffRaffServerDeps,
 
     packageName in Universal := normalizedName.value,
     topLevelDirectory in Universal := Some(normalizedName.value),
@@ -65,5 +65,33 @@ lazy val riffraff = project.in(file("riff-raff"))
 
     fork in Test := false,
 
-    includeFilter in (Assets, LessKeys.less) := "*.less"
+    includeFilter in (Assets, LessKeys.less) := "*.less",
+
+    scalaJSProjects := Seq(riffRaffClient),
+    pipelineStages in Assets := Seq(scalaJSPipeline),
+    pipelineStages := Seq(digest, gzip),
+    compile in Compile <<= (compile in Compile) dependsOn scalaJSPipeline
   ))
+
+lazy val riffRaffClient = project.in(file("riff-raff-client"))
+  .settings(commonSettings:_*)
+  .settings(
+    persistLauncher := true,
+    persistLauncher in Test := false,
+    libraryDependencies ++= riffRaffClientDeps.value
+  )
+  .enablePlugins(ScalaJSPlugin, ScalaJSWeb)
+  .dependsOn(riffRaffSharedJs)
+
+// a special crossProject for configuring a JS/JVM/shared structure
+lazy val shared = (crossProject.crossType(CrossType.Pure) in file("riff-raff-shared"))
+  .settings(commonSettings:_*)
+  .settings(
+    libraryDependencies ++= sharedRiffRaffDeps
+  )
+  // set up settings specific to the JS project
+  .jsConfigure(_ enablePlugins ScalaJSWeb)
+
+lazy val riffRaffSharedJvm = shared.jvm.settings(name := "riff-raff-shared-jvm")
+
+lazy val riffRaffSharedJs = shared.js.settings(name := "riff-raff-shared-js")
