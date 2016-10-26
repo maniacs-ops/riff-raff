@@ -78,7 +78,8 @@ lazy val riffRaffClient = project.in(file("riff-raff-client"))
   .settings(
     persistLauncher := true,
     persistLauncher in Test := false,
-    libraryDependencies ++= riffRaffClientDeps.value
+    libraryDependencies ++= riffRaffClientDeps.value,
+    jsDependencies ++= jsDeps
   )
   .enablePlugins(ScalaJSPlugin, ScalaJSWeb)
   .dependsOn(riffRaffSharedJs)
@@ -87,7 +88,7 @@ lazy val riffRaffClient = project.in(file("riff-raff-client"))
 lazy val shared = (crossProject.crossType(CrossType.Pure) in file("riff-raff-shared"))
   .settings(commonSettings:_*)
   .settings(
-    libraryDependencies ++= sharedRiffRaffDeps
+    libraryDependencies ++= sharedRiffRaffDeps.value
   )
   // set up settings specific to the JS project
   .jsConfigure(_ enablePlugins ScalaJSWeb)

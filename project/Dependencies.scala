@@ -46,13 +46,12 @@ object Dependencies {
     m.excludeAll(ExclusionRule(organization = "com.google.code.findbugs", name = "jsr305"))
   )
 
-  val sharedRiffRaffDeps = Seq()
-
-  val riffRaffClientDeps = Def.setting(Seq(
-    "org.scala-js" %%% "scalajs-dom" % "0.9.1"
+  val sharedRiffRaffDeps: Def.Initialize[Seq[ModuleID]] = Def.setting(Seq(
+    "com.lihaoyi" %%% "autowire" % "0.2.5",
+    "me.chrons" %%% "boopickle" % "1.2.4"
   ))
 
-  val riffRaffServerDeps = commonDeps ++ Seq(
+  val riffRaffServerDeps: Seq[ModuleID] = commonDeps ++ Seq(
     "com.gu" %% "management-play" % Versions.guardianManagementPlay exclude("javassist", "javassist"), // http://code.google.com/p/reflections/issues/detail?id=140
     "com.gu" %% "management-logback" % Versions.guardianManagement,
     "com.gu" %% "configuration" % "4.0",
@@ -65,11 +64,22 @@ object Dependencies {
     "com.amazonaws" % "aws-java-sdk-dynamodb" % Versions.aws,
     filters,
     ws,
+    "com.vmunier" %% "scalajs-scripts" % "1.0.0",
     "com.typesafe.akka" %% "akka-testkit" % "2.4.10" % Test,
     "org.gnieh" %% "diffson" % "2.0.2" % Test
   ).map((m: ModuleID) =>
     // don't even ask why I need to do this
     m.excludeAll(ExclusionRule(organization = "com.google.code.findbugs", name = "jsr305"))
+  )
+
+  val riffRaffClientDeps: Def.Initialize[Seq[ModuleID]] = Def.setting(Seq(
+    "org.scala-js" %%% "scalajs-dom" % "0.9.1",
+    "be.doeraene" %%% "scalajs-jquery" % "0.9.0"
+  ))
+
+  val jsDeps = Seq(
+    "org.webjars" % "jquery" % "3.1.1" / "jquery.js" minified "jquery.min.js",
+    "org.webjars" % "bootstrap" % "3.3.7" / "bootstrap.js" minified "bootstrap.min.js" dependsOn "jquery.js"
   )
 
 }
