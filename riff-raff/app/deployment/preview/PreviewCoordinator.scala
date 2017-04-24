@@ -16,11 +16,14 @@ import scala.collection.concurrent.{Map => ConcurrentMap}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-class PreviewCoordinator(prismLookup: PrismLookup, deploymentTypes: Seq[DeploymentType]) extends Loggable {
-  private val previews: ConcurrentMap[UUID, PreviewResult] = new ConcurrentHashMap[UUID, PreviewResult]().asScala
+class PreviewCoordinator(prismLookup: PrismLookup,
+                         deploymentTypes: Seq[DeploymentType])
+    extends Loggable {
+  private val previews: ConcurrentMap[UUID, PreviewResult] =
+    new ConcurrentHashMap[UUID, PreviewResult]().asScala
 
   def cleanupPreviews() {
-    previews.retain{(uuid, result) =>
+    previews.retain { (uuid, result) =>
       !result.future.isCompleted || result.duration.toStandardMinutes.getMinutes < 60
     }
   }
@@ -30,14 +33,22 @@ class PreviewCoordinator(prismLookup: PrismLookup, deploymentTypes: Seq[Deployme
 
     val previewId = UUID.randomUUID()
     logger.info(s"Starting preview for $previewId")
-    val muteLogger = DeployReporter.rootReporterFor(previewId, parameters, publishMessages = false)
-    val resources = DeploymentResources(muteLogger, prismLookup, Configuration.artifact.aws.client)
-    val artifact = S3YamlArtifact.apply(parameters.build, conf.Configuration.artifact.aws.bucketName)
-    val maybeConfig = artifact.deployObject.fetchContentAsString()(resources.artifactClient)
+    val muteLogger = DeployReporter.rootReporterFor(previewId,
+                                                    parameters,
+                                                    publishMessages = false)
+    val resources = DeploymentResources(muteLogger,
+                                        prismLookup,
+                                        Configuration.artifact.aws.client)
+    val artifact = S3YamlArtifact.apply(
+      parameters.build,
+      conf.Configuration.artifact.aws.bucketName)
+    val maybeConfig =
+      artifact.deployObject.fetchContentAsString()(resources.artifactClient)
 
     maybeConfig.map(config => {
       logger.info(s"Got configuration for $previewId - resolving")
-      val eventualPreview = Future(Preview(artifact, config, parameters, resources, deploymentTypes))
+      val eventualPreview = Future(
+        Preview(artifact, config, parameters, resources, deploymentTypes))
       previews += previewId -> PreviewResult(eventualPreview)
       previewId
     })

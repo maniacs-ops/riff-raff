@@ -1,9 +1,14 @@
 package magenta.deployment_type
 
 import magenta.deployment_type.CloudFormationDeploymentTypeParameters._
-import magenta.tasks.{CheckUpdateEventsTask, UpdateAmiCloudFormationParameterTask}
+import magenta.tasks.{
+  CheckUpdateEventsTask,
+  UpdateAmiCloudFormationParameterTask
+}
 
-object AmiCloudFormationParameter extends DeploymentType with CloudFormationDeploymentTypeParameters {
+object AmiCloudFormationParameter
+    extends DeploymentType
+    with CloudFormationDeploymentTypeParameters {
   val name = "ami-cloudformation-parameter"
   def documentation =
     """Update an AMI parameter in a CloudFormation stack.
@@ -39,17 +44,21 @@ object AmiCloudFormationParameter extends DeploymentType with CloudFormationDepl
       |You'll need to add this to the Riff-Raff IAM account used for your project.
     """.stripMargin
 
-  val update = Action("update",
+  val update = Action(
+    "update",
     """
       |Given AMI tags, this will resolve the latest matching AMI and update the AMI parameter
       | on the provided CloudFormation stack.
     """.stripMargin
-  ){ (pkg, resources, target) => {
+  ) { (pkg, resources, target) =>
+    {
       implicit val keyRing = resources.assembleKeyring(target, pkg)
       val reporter = resources.reporter
 
-      val amiParameterMap: Map[CfnParam, TagCriteria] = getAmiParameterMap(pkg, target, reporter)
-      val cloudFormationStackLookupStrategy = getCloudFormationStackLookupStrategy(pkg, target, reporter)
+      val amiParameterMap: Map[CfnParam, TagCriteria] =
+        getAmiParameterMap(pkg, target, reporter)
+      val cloudFormationStackLookupStrategy =
+        getCloudFormationStackLookupStrategy(pkg, target, reporter)
 
       List(
         UpdateAmiCloudFormationParameterTask(

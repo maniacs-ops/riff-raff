@@ -3,30 +3,49 @@ package deployment.actors
 import java.util.UUID
 
 import akka.actor.SupervisorStrategy.Stop
-import akka.actor.{Actor, ActorRef, ActorRefFactory, OneForOneStrategy, Terminated}
+import akka.actor.{
+  Actor,
+  ActorRef,
+  ActorRefFactory,
+  OneForOneStrategy,
+  Terminated
+}
 import akka.agent.Agent
 import cats.data.Validated.{Invalid, Valid}
 import controllers.Logging
 import deployment.Record
 import magenta.artifact._
 import magenta.deployment_type.DeploymentType
-import magenta.graph.{DeploymentGraph, DeploymentTasks, Graph, StartNode, ValueNode}
+import magenta.graph.{
+  DeploymentGraph,
+  DeploymentTasks,
+  Graph,
+  StartNode,
+  ValueNode
+}
 import magenta.input.resolver.Resolver
 import magenta.json.JsonReader
-import magenta.{DeployContext, DeployReporter, DeployStoppedException, DeploymentResources, Region}
+import magenta.{
+  DeployContext,
+  DeployReporter,
+  DeployStoppedException,
+  DeploymentResources,
+  Region
+}
 import org.joda.time.DateTime
 import resources.PrismLookup
 
 import scala.util.control.NonFatal
 
 class DeployGroupRunner(
-  record: Record,
-  deployCoordinator: ActorRef,
-  deploymentRunnerFactory: (ActorRefFactory, String) => ActorRef,
-  stopFlagAgent: Agent[Map[UUID, String]],
-  prismLookup: PrismLookup,
-  deploymentTypes: Seq[DeploymentType]
-) extends Actor with Logging {
+    record: Record,
+    deployCoordinator: ActorRef,
+    deploymentRunnerFactory: (ActorRefFactory, String) => ActorRef,
+    stopFlagAgent: Agent[Map[UUID, String]],
+    prismLookup: PrismLookup,
+    deploymentTypes: Seq[DeploymentType]
+) extends Actor
+    with Logging {
   import DeployGroupRunner._
 
   override def supervisorStrategy() = OneForOneStrategy() {
@@ -35,7 +54,8 @@ class DeployGroupRunner(
       Stop
   }
 
-  val rootReporter = DeployReporter.startDeployContext(DeployReporter.rootReporterFor(record.uuid, record.parameters))
+  val rootReporter = DeployReporter.startDeployContext(
+    DeployReporter.rootReporterFor(record.uuid, record.parameters))
   var rootContextClosed = false
 
   var deployContext: Option[DeployContext] = None
@@ -44,13 +64,15 @@ class DeployGroupRunner(
   var completed: Set[ValueNode[DeploymentTasks]] = Set.empty
   var failed: Set[ValueNode[DeploymentTasks]] = Set.empty
 
-  def deploymentGraph: Graph[DeploymentTasks] = deployContext.map(_.tasks).getOrElse(Graph.empty[DeploymentTasks])
+  def deploymentGraph: Graph[DeploymentTasks] =
+    deployContext.map(_.tasks).getOrElse(Graph.empty[DeploymentTasks])
   def allDeployments = deploymentGraph.nodes.filterValueNodes
 
   def isFinished: Boolean = allDeployments == completed ++ failed
   def isExecuting: Boolean = executing.nonEmpty
 
-  def first: List[ValueNode[DeploymentTasks]] = deploymentGraph.orderedSuccessors(StartNode).filterValueNodes
+  def first: List[ValueNode[DeploymentTasks]] =
+    deploymentGraph.orderedSuccessors(StartNode).filterValueNodes
   /* these two functions can return a number of things
       - Deployments: list of deployments
       - FinishPath: indicator there are no more tasks on this path
@@ -62,9 +84,13 @@ class DeployGroupRunner(
     // otherwise let's see what children are valid to return
     else {
       // candidates are all successors not already executing or completing
-      val nextDeploymentCandidates = deploymentGraph.orderedSuccessors(deploymentGraph.get(deployment)).filterValueNodes
+      val nextDeploymentCandidates = deploymentGraph
+        .orderedSuccessors(deploymentGraph.get(deployment))
+        .filterValueNodes
       // now filter for only tasks whose predecessors are all completed
-      val nextDeployments = nextDeploymentCandidates.filter { deployment => (deploymentGraph.predecessors(deployment) -- completed).isEmpty }
+      val nextDeployments = nextDeploymentCandidates.filter { deployment =>
+        (deploymentGraph.predecessors(deployment) -- completed).isEmpty
+      }
       if (nextDeployments.nonEmpty) {
         NextTasks(nextDeployments)
       } else {
@@ -109,7 +135,7 @@ class DeployGroupRunner(
        |#Tasks: ${allDeployments.size}
        |#Executing: ${executing.mkString("; ")}
        |#Completed: ${completed.size} Failed: ${failed.size}
-       |#Done: ${completed.size+failed.size}
+       |#Done: ${completed.size + failed.size}
      """.stripMargin
   }
 
@@ -146,13 +172,17 @@ class DeployGroupRunner(
       log.debug("Deployment failed")
       markFailed(tasks)
       if (isExecuting) {
-        log.debug("Failed during deployment but others still running - deferring clean up")
+        log.debug(
+          "Failed during deployment but others still running - deferring clean up")
       } else {
         cleanup()
       }
 
     case Terminated(actor) =>
-      if (!rootContextClosed) failRootContext("DeploymentRunner unexpectedly terminated", new RuntimeException("DeploymentRunner unexpectedly terminated"))
+      if (!rootContextClosed)
+        failRootContext(
+          "DeploymentRunner unexpectedly terminated",
+          new RuntimeException("DeploymentRunner unexpectedly terminated"))
       log.warn(s"Received terminate from ${actor.path}")
   }
 
@@ -168,39 +198,62 @@ class DeployGroupRunner(
       val resources = DeploymentResources(safeReporter, prismLookup, client)
 
       val riffRaffYaml = S3YamlArtifact(record.parameters.build, bucketName)
-      val riffRaffYamlString = riffRaffYaml.deployObject.fetchContentAsString()(client)
+      val riffRaffYamlString =
+        riffRaffYaml.deployObject.fetchContentAsString()(client)
 
-      val context: Either[ArtifactResolutionError, DeployContext] = riffRaffYamlString.map { yaml =>
-        val graph = Resolver.resolve(yaml, resources, record.parameters, deploymentTypes, riffRaffYaml)
-        graph.map(DeployContext(record.uuid, record.parameters, _)) match {
-          case Invalid(errors) =>
-            errors.errors.toList.foreach(error => safeReporter.warning(s"${error.context}: ${error.message}"))
-            safeReporter.fail(s"Failed to successfully resolve the deployment: ${errors.errors.toList.size} errors")
-          case Valid(success) => success
-        }
-      } orElse {
+      val context
+        : Either[ArtifactResolutionError, DeployContext] = riffRaffYamlString
+        .map { yaml =>
+          val graph = Resolver.resolve(yaml,
+                                       resources,
+                                       record.parameters,
+                                       deploymentTypes,
+                                       riffRaffYaml)
+          graph.map(DeployContext(record.uuid, record.parameters, _)) match {
+            case Invalid(errors) =>
+              errors.errors.toList.foreach(error =>
+                safeReporter.warning(s"${error.context}: ${error.message}"))
+              safeReporter.fail(
+                s"Failed to successfully resolve the deployment: ${errors.errors.toList.size} errors")
+            case Valid(success) => success
+          }
+        } orElse {
         safeReporter.info("Falling back to deploy.json")
         val s3Artifact = S3JsonArtifact(record.parameters.build, bucketName)
         val json = S3JsonArtifact.fetchInputFile(s3Artifact)
-        val project = json.map(JsonReader.buildProject(_, s3Artifact, deploymentTypes))
-        project.map(DeployContext(record.uuid, record.parameters, _, resources, Region(target.aws.deployJsonRegionName)))
+        val project =
+          json.map(JsonReader.buildProject(_, s3Artifact, deploymentTypes))
+        project.map(
+          DeployContext(record.uuid,
+                        record.parameters,
+                        _,
+                        resources,
+                        Region(target.aws.deployJsonRegionName)))
       }
 
-      val c = context.recover {
-        case S3ArtifactError(EmptyS3Location(location)) => safeReporter.fail(s"No file found at $location")
-        case S3ArtifactError(UnknownS3Error(e)) => safeReporter.fail("Error while resolving deploy context", e)
-        case JsonArtifactError(parseErrors) => safeReporter.fail(s"Couldn't parse `deploy.json`: $parseErrors")
-      }.getOrElse(safeReporter.fail("Unexpected error while resolving deploy context"))
+      val c = context
+        .recover {
+          case S3ArtifactError(EmptyS3Location(location)) =>
+            safeReporter.fail(s"No file found at $location")
+          case S3ArtifactError(UnknownS3Error(e)) =>
+            safeReporter.fail("Error while resolving deploy context", e)
+          case JsonArtifactError(parseErrors) =>
+            safeReporter.fail(s"Couldn't parse `deploy.json`: $parseErrors")
+        }
+        .getOrElse(
+          safeReporter.fail("Unexpected error while resolving deploy context"))
 
       if (DeploymentGraph.toTaskList(c.tasks).isEmpty)
-        safeReporter.fail("No tasks were found to execute. Ensure the app(s) are in the list supported by this stage/host.")
-      
+        safeReporter.fail(
+          "No tasks were found to execute. Ensure the app(s) are in the list supported by this stage/host.")
+
       c
     }
   }
 
   private def reportTasks() = {
-    deployContext.foreach(c => rootReporter.taskList(c.tasks.toList.flatMap(_.tasks)))
+    deployContext.foreach(c =>
+      rootReporter.taskList(c.tasks.toList.flatMap(_.tasks)))
   }
 
   private var actorIndex = 0
@@ -212,12 +265,18 @@ class DeployGroupRunner(
   private def runTasks(tasksList: List[ValueNode[DeploymentTasks]]) = {
     try {
       honourStopFlag(rootReporter) {
-        tasksList.zipWithIndex.foreach { case (ValueNode(tasks), index) =>
-          val actorName = nextActorName()
-          log.debug(s"Running next set of tasks (${tasks.name}/$index) on actor $actorName")
-          val deploymentRunner = context.watch(deploymentRunnerFactory(context, actorName))
-          deploymentRunner ! TasksRunner.RunDeployment(record.uuid, tasks, rootReporter, new DateTime())
-          markExecuting(tasks)
+        tasksList.zipWithIndex.foreach {
+          case (ValueNode(tasks), index) =>
+            val actorName = nextActorName()
+            log.debug(
+              s"Running next set of tasks (${tasks.name}/$index) on actor $actorName")
+            val deploymentRunner =
+              context.watch(deploymentRunnerFactory(context, actorName))
+            deploymentRunner ! TasksRunner.RunDeployment(record.uuid,
+                                                         tasks,
+                                                         rootReporter,
+                                                         new DateTime())
+            markExecuting(tasks)
         }
       }
     } catch {
@@ -231,7 +290,9 @@ class DeployGroupRunner(
         log.debug("Stop flag set")
         val stopMessage = s"Deploy has been stopped by $userName"
         if (!isExecuting) {
-          DeployReporter.failContext(rootReporter, stopMessage, DeployStoppedException(stopMessage))
+          DeployReporter.failContext(rootReporter,
+                                     stopMessage,
+                                     DeployStoppedException(stopMessage))
           log.debug("Cleaning up")
           cleanup()
         }
@@ -251,7 +312,8 @@ class DeployGroupRunner(
 
 object DeployGroupRunner {
   sealed trait NextResult
-  case class NextTasks(tasksList: List[ValueNode[DeploymentTasks]]) extends NextResult
+  case class NextTasks(tasksList: List[ValueNode[DeploymentTasks]])
+      extends NextResult
   case object DeployUnfinished extends NextResult
   case object DeployFinished extends NextResult
 
@@ -260,5 +322,6 @@ object DeployGroupRunner {
   case class ContextCreated(context: DeployContext) extends Message
   case object StartDeployment extends Message
   case class DeploymentCompleted(tasks: DeploymentTasks) extends Message
-  case class DeploymentFailed(tasks: DeploymentTasks, exception: Throwable) extends Message
+  case class DeploymentFailed(tasks: DeploymentTasks, exception: Throwable)
+      extends Message
 }

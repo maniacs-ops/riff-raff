@@ -19,7 +19,10 @@ object `package` {
       filter.maxDaysAgo match {
         case None => MongoDBObject(criteriaList)
 
-        case Some(days) => MongoDBObject(criteriaList) ++ ("startTime" $gt LocalDate.now.minusDays(days).toDate)
+        case Some(days) =>
+          MongoDBObject(criteriaList) ++ ("startTime" $gt LocalDate.now
+            .minusDays(days)
+            .toDate)
       }
     }
   }

@@ -7,10 +7,12 @@ import play.api.libs.json._
 case class ConfigError(context: String, message: String)
 case class ConfigErrors(errors: NEL[ConfigError])
 object ConfigErrors {
-  def apply(context: String, message: String): ConfigErrors = ConfigErrors(ConfigError(context, message))
+  def apply(context: String, message: String): ConfigErrors =
+    ConfigErrors(ConfigError(context, message))
   def apply(error: ConfigError): ConfigErrors = ConfigErrors(NEL.of(error))
   implicit val sg = new Semigroup[ConfigErrors] {
-    def combine(x: ConfigErrors, y: ConfigErrors): ConfigErrors = ConfigErrors(x.errors.concat(y.errors))
+    def combine(x: ConfigErrors, y: ConfigErrors): ConfigErrors =
+      ConfigErrors(x.errors.concat(y.errors))
   }
 }
 
@@ -19,12 +21,19 @@ object ConfigErrors {
   * that needs to be done when deploying. A deployment key can be represented as a string and there are some methods
   * for doing that at the package level.
   */
-case class DeploymentKey(name: String, action: String, stack: String, region: String)
+case class DeploymentKey(name: String,
+                         action: String,
+                         stack: String,
+                         region: String)
 object DeploymentKey {
+
   /** Turn a deployment into a deployment key - WARNING: this doesn't make any checks about the number of elements
     * but will only work predictably with one element in each of actions, stacks and regions */
   def apply(deployment: Deployment): DeploymentKey = {
-    DeploymentKey(deployment.name, deployment.actions.head, deployment.stacks.head, deployment.regions.head)
+    DeploymentKey(deployment.name,
+                  deployment.actions.head,
+                  deployment.stacks.head,
+                  deployment.regions.head)
   }
 
   // serialisation and de-serialisation code for deployment keys
@@ -34,25 +43,29 @@ object DeploymentKey {
     d.map(asString).mkString(DEPLOYMENT_DELIMITER.toString)
   }
   def asString(d: DeploymentKey): String = {
-    List(d.name, d.action, d.stack, d.region).mkString(FIELD_DELIMITER.toString)
+    List(d.name, d.action, d.stack, d.region)
+      .mkString(FIELD_DELIMITER.toString)
   }
   def fromString(s: String) = s.split(FIELD_DELIMITER).toList match {
-    case name :: action :: stack :: region :: Nil => Some(DeploymentKey(name, action, stack, region))
+    case name :: action :: stack :: region :: Nil =>
+      Some(DeploymentKey(name, action, stack, region))
     case _ => None
   }
-  def fromStringToList(s: String): List[DeploymentKey] = s.split(DEPLOYMENT_DELIMITER).toList.flatMap(fromString)
+  def fromStringToList(s: String): List[DeploymentKey] =
+    s.split(DEPLOYMENT_DELIMITER).toList.flatMap(fromString)
 
 }
 
 sealed trait DeploymentSelector
 case object All extends DeploymentSelector
-case class DeploymentKeysSelector(keys: List[DeploymentKey]) extends DeploymentSelector
+case class DeploymentKeysSelector(keys: List[DeploymentKey])
+    extends DeploymentSelector
 
 case class RiffRaffDeployConfig(
-  stacks: Option[List[String]],
-  regions: Option[List[String]],
-  templates: Option[Map[String, DeploymentOrTemplate]],
-  deployments: List[(String, DeploymentOrTemplate)]
+    stacks: Option[List[String]],
+    regions: Option[List[String]],
+    templates: Option[Map[String, DeploymentOrTemplate]],
+    deployments: List[(String, DeploymentOrTemplate)]
 )
 object RiffRaffDeployConfig {
   import RiffRaffYamlReader.readObjectAsList
@@ -74,15 +87,15 @@ object RiffRaffDeployConfig {
   * @param parameters       Provides additional parameters to the deployment type. Refer to the deployment types to see what is required.
   */
 case class DeploymentOrTemplate(
-  `type`: Option[String],
-  template: Option[String],
-  stacks: Option[List[String]],
-  regions: Option[List[String]],
-  actions: Option[List[String]],
-  app: Option[String],
-  contentDirectory: Option[String],
-  dependencies: Option[List[String]],
-  parameters: Option[Map[String, JsValue]]
+    `type`: Option[String],
+    template: Option[String],
+    stacks: Option[List[String]],
+    regions: Option[List[String]],
+    actions: Option[List[String]],
+    app: Option[String],
+    contentDirectory: Option[String],
+    dependencies: Option[List[String]],
+    parameters: Option[Map[String, JsValue]]
 )
 object DeploymentOrTemplate {
   implicit val reads: Reads[DeploymentOrTemplate] = checkedReads(Json.reads)
@@ -92,13 +105,13 @@ object DeploymentOrTemplate {
   * A deployment that has been parsed and validated out of a riff-raff.yml file.
   */
 case class Deployment(
-  name: String,
-  `type`: String,
-  stacks: NEL[String],
-  regions: NEL[String],
-  actions: NEL[String],
-  app: String,
-  contentDirectory: String,
-  dependencies: List[String],
-  parameters: Map[String, JsValue]
+    name: String,
+    `type`: String,
+    stacks: NEL[String],
+    regions: NEL[String],
+    actions: NEL[String],
+    app: String,
+    contentDirectory: String,
+    dependencies: List[String],
+    parameters: Map[String, JsValue]
 )

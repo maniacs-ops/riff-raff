@@ -21,32 +21,45 @@ object Vcl {
   implicit val reads = Json.reads[Vcl]
 }
 
-case class UpdateFastlyConfig(s3Package: S3Path)(implicit val keyRing: KeyRing, artifactClient: AmazonS3) extends Task {
+case class UpdateFastlyConfig(s3Package: S3Path)(implicit val keyRing: KeyRing,
+                                                 artifactClient: AmazonS3)
+    extends Task {
 
-  implicit val ec = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(10))
+  implicit val ec =
+    ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(10))
 
   // No, I'm not happy about this, but it gets things working until we can make a larger change
   def block[T](f: => Future[T]) = Await.result(f, 1.minute)
 
   override def execute(reporter: DeployReporter, stopFlag: => Boolean) {
     FastlyApiClientProvider.get(keyRing).foreach { client =>
-      val activeVersionNumber = getActiveVersionNumber(client, reporter, stopFlag)
-      val nextVersionNumber = clone(activeVersionNumber, client, reporter, stopFlag)
+      val activeVersionNumber =
+        getActiveVersionNumber(client, reporter, stopFlag)
+      val nextVersionNumber =
+        clone(activeVersionNumber, client, reporter, stopFlag)
 
       deleteAllVclFilesFrom(nextVersionNumber, client, reporter, stopFlag)
 
-      uploadNewVclFilesTo(nextVersionNumber, s3Package, client, reporter, stopFlag)
+      uploadNewVclFilesTo(nextVersionNumber,
+                          s3Package,
+                          client,
+                          reporter,
+                          stopFlag)
       activateVersion(nextVersionNumber, client, reporter, stopFlag)
 
       reporter.info(s"Fastly version $nextVersionNumber is now active")
     }
   }
 
-
   def stopOnFlag[T](stopFlag: => Boolean)(block: => T): T =
-    if (!stopFlag) block else throw new DeployStoppedException("Deploy manually stopped during UpdateFastlyConfig")
+    if (!stopFlag) block
+    else
+      throw new DeployStoppedException(
+        "Deploy manually stopped during UpdateFastlyConfig")
 
-  private def getActiveVersionNumber(client: FastlyApiClient, reporter: DeployReporter, stopFlag: => Boolean): Int = {
+  private def getActiveVersionNumber(client: FastlyApiClient,
+                                     reporter: DeployReporter,
+                                     stopFlag: => Boolean): Int = {
     stopOnFlag(stopFlag) {
       val versionList = block(client.versionList())
       val versions = Json.parse(versionList.getResponseBody).as[List[Version]]
@@ -56,7 +69,10 @@ case class UpdateFastlyConfig(s3Package: S3Path)(implicit val keyRing: KeyRing, 
     }
   }
 
-  private def clone(versionNumber: Int, client: FastlyApiClient, reporter: DeployReporter, stopFlag: => Boolean): Int = {
+  private def clone(versionNumber: Int,
+                    client: FastlyApiClient,
+                    reporter: DeployReporter,
+                    stopFlag: => Boolean): Int = {
     stopOnFlag(stopFlag) {
       val cloned = block(client.versionClone(versionNumber))
       val clonedVersion = Json.parse(cloned.getResponseBody).as[Version]
@@ -65,25 +81,36 @@ case class UpdateFastlyConfig(s3Package: S3Path)(implicit val keyRing: KeyRing, 
     }
   }
 
-  private def deleteAllVclFilesFrom(versionNumber: Int, client: FastlyApiClient, reporter: DeployReporter, stopFlag: => Boolean): Unit = {
+  private def deleteAllVclFilesFrom(versionNumber: Int,
+                                    client: FastlyApiClient,
+                                    reporter: DeployReporter,
+                                    stopFlag: => Boolean): Unit = {
     stopOnFlag(stopFlag) {
       val vclListResponse = block(client.vclList(versionNumber))
-      val vclFilesToDelete = Json.parse(vclListResponse.getResponseBody).as[List[Vcl]]
+      val vclFilesToDelete =
+        Json.parse(vclListResponse.getResponseBody).as[List[Vcl]]
       vclFilesToDelete.foreach { file =>
         reporter.info(s"Deleting ${file.name}")
-        block(client.vclDelete(versionNumber, file.name).map(_.getResponseBody))
+        block(
+          client.vclDelete(versionNumber, file.name).map(_.getResponseBody))
       }
     }
   }
 
-  private def uploadNewVclFilesTo(versionNumber: Int, s3Package: S3Path, client: FastlyApiClient, reporter: DeployReporter, stopFlag: => Boolean): Unit = {
+  private def uploadNewVclFilesTo(versionNumber: Int,
+                                  s3Package: S3Path,
+                                  client: FastlyApiClient,
+                                  reporter: DeployReporter,
+                                  stopFlag: => Boolean): Unit = {
     stopOnFlag(stopFlag) {
       s3Package.listAll()(artifactClient).map { obj =>
         if (obj.extension.contains("vcl")) {
           val fileName = obj.relativeTo(s3Package)
-          val vcl = withResource(artifactClient.getObject(obj.bucket, obj.key).getObjectContent) { stream =>
-            reporter.info(s"Uploading $fileName")
-            scala.io.Source.fromInputStream(stream).mkString
+          val vcl = withResource(
+            artifactClient.getObject(obj.bucket, obj.key).getObjectContent) {
+            stream =>
+              reporter.info(s"Uploading $fileName")
+              scala.io.Source.fromInputStream(stream).mkString
           }
           block(client.vclUpload(versionNumber, vcl, fileName, fileName))
         }
@@ -92,8 +119,12 @@ case class UpdateFastlyConfig(s3Package: S3Path)(implicit val keyRing: KeyRing, 
     }
   }
 
-  private def activateVersion(versionNumber: Int, client: FastlyApiClient, reporter: DeployReporter, stopFlag: => Boolean): Unit = {
-    val configIsValid = validateNewConfigFor(versionNumber, client, reporter, stopFlag)
+  private def activateVersion(versionNumber: Int,
+                              client: FastlyApiClient,
+                              reporter: DeployReporter,
+                              stopFlag: => Boolean): Unit = {
+    val configIsValid =
+      validateNewConfigFor(versionNumber, client, reporter, stopFlag)
     if (configIsValid) {
       block(client.versionActivate(versionNumber))
     } else {
@@ -101,7 +132,10 @@ case class UpdateFastlyConfig(s3Package: S3Path)(implicit val keyRing: KeyRing, 
     }
   }
 
-  private def validateNewConfigFor(versionNumber: Int, client: FastlyApiClient, reporter: DeployReporter, stopFlag: => Boolean): Boolean = {
+  private def validateNewConfigFor(versionNumber: Int,
+                                   client: FastlyApiClient,
+                                   reporter: DeployReporter,
+                                   stopFlag: => Boolean): Boolean = {
     stopOnFlag(stopFlag) {
       reporter.info("Waiting 5 seconds for the VCL to compile")
       Thread.sleep(5000)
@@ -111,12 +145,15 @@ case class UpdateFastlyConfig(s3Package: S3Path)(implicit val keyRing: KeyRing, 
       val jsonString = response.getResponseBody
       val validationResponse = (Json.parse(jsonString) \ "status").toOption
       val isOk = validationResponse.contains(JsString("ok"))
-      if (!isOk) reporter.warning(s"Validation of configuration not OK. API response: $jsonString")
+      if (!isOk)
+        reporter.warning(
+          s"Validation of configuration not OK. API response: $jsonString")
       isOk
     }
   }
 
-  override def description: String = "Update configuration of Fastly edge-caching service"
+  override def description: String =
+    "Update configuration of Fastly edge-caching service"
 
   override def verbose: String = description
 }
@@ -128,13 +165,14 @@ object FastlyApiClientProvider {
   def get(keyRing: KeyRing): Option[FastlyApiClient] = {
 
     keyRing.apiCredentials.get("fastly").map { credentials =>
-        val serviceId = credentials.id
-        val apiKey = credentials.secret
+      val serviceId = credentials.id
+      val apiKey = credentials.secret
 
-        if (fastlyApiClients.get(serviceId).isEmpty) {
-          this.fastlyApiClients += (serviceId -> new FastlyApiClient(apiKey, serviceId))
-        }
-        return fastlyApiClients.get(serviceId)
+      if (fastlyApiClients.get(serviceId).isEmpty) {
+        this.fastlyApiClients += (serviceId -> new FastlyApiClient(apiKey,
+                                                                   serviceId))
+      }
+      return fastlyApiClients.get(serviceId)
     }
 
     None

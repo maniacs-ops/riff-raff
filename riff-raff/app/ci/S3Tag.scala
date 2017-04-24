@@ -13,7 +13,10 @@ object S3Tag {
   def of(build: CIBuild): Option[Seq[String]] = {
     for {
       bucket <- bucketName
-      tagContent <- S3Path(bucket, s"${build.jobName}/${build.number}/tags.json").fetchContentAsString().toOption
+      tagContent <- S3Path(bucket,
+                           s"${build.jobName}/${build.number}/tags.json")
+        .fetchContentAsString()
+        .toOption
       tags <- Json.parse(tagContent).asOpt[Seq[String]]
     } yield tags
   }

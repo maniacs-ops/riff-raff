@@ -23,24 +23,32 @@ object Image {
   implicit val formats = Json.format[Image]
 }
 
-class PrismLookup(wsClient: WSClient, url: String, timeout: Duration) extends Lookup with Logging {
+class PrismLookup(wsClient: WSClient, url: String, timeout: Duration)
+    extends Lookup
+    with Logging {
 
   def keyRing(stage: Stage, apps: Set[App], stack: Stack): KeyRing = KeyRing(
-    apiCredentials = apps.toSeq.flatMap {
-      app => {
-        val KeyPattern = """credentials:(.*)""".r
-        val apiCredentials = data.keys flatMap {
-          case key@KeyPattern(service) =>
-            data.datum(key, app, stage, stack).flatMap { data =>
-              secretProvider.lookup(service, data.value).map { secret =>
-                service -> ApiCredentials(service, data.value, secret, data.comment)
+    apiCredentials = apps.toSeq
+      .flatMap { app =>
+        {
+          val KeyPattern = """credentials:(.*)""".r
+          val apiCredentials = data.keys flatMap {
+            case key @ KeyPattern(service) =>
+              data.datum(key, app, stage, stack).flatMap { data =>
+                secretProvider.lookup(service, data.value).map { secret =>
+                  service -> ApiCredentials(service,
+                                            data.value,
+                                            secret,
+                                            data.comment)
+                }
               }
-            }
-          case _ => None
+            case _ => None
+          }
+          apiCredentials
         }
-        apiCredentials
       }
-    }.distinct.toMap
+      .distinct
+      .toMap
   )
 
   object prism extends Logging {
@@ -52,8 +60,9 @@ class PrismLookup(wsClient: WSClient, url: String, timeout: Duration) extends Lo
         Await.result(result, timeout)
       } catch {
         case NonFatal(e) =>
-          log.warn(s"Call to prism failed ($path; $retriesLeft retries left)", e)
-          if (retriesLeft > 0) get(path,retriesLeft-1)(block) else throw e
+          log.warn(s"Call to prism failed ($path; $retriesLeft retries left)",
+                   e)
+          if (retriesLeft > 0) get(path, retriesLeft - 1)(block) else throw e
       }
     }
   }
@@ -62,7 +71,7 @@ class PrismLookup(wsClient: WSClient, url: String, timeout: Duration) extends Lo
 
   implicit val datumReads = Json.reads[Datum]
   implicit val hostReads = (
-      (__ \ "dnsName").read[String] and
+    (__ \ "dnsName").read[String] and
       (__ \ "mainclasses").readNullable[Set[String]] and
       (__ \ "stack").readNullable[String] and
       (__ \ "app").readNullable[Seq[String]] and
@@ -72,65 +81,84 @@ class PrismLookup(wsClient: WSClient, url: String, timeout: Duration) extends Lo
       (__ \ "instanceName").readNullable[String] and
       (__ \ "internalName").readNullable[String] and
       (__ \ "dnsName").read[String]
-    ){ (name:String, mainclasses:Option[Set[String]], stack:Option[String], app:Option[Seq[String]],
-        stage: String, group: String, createdAt: DateTime,
-        instanceName: Option[String], internalName: Option[String], dnsName: String) =>
-    val appSet:Set[App] = if (stack.isDefined && app.isDefined) {
-      app.get.map(appName => App(appName)).toSet
-    } else {
-      mainclasses.map(_.map(App)).getOrElse(Set.empty)
-    }
-    val tags = {
-      Map(
-        "group" -> group,
-        "created_at" -> formatter.print(createdAt.toDateTime(DateTimeZone.UTC)),
-        "dnsname" -> dnsName
-      ) ++
-        instanceName.map("instancename" ->) ++
-        internalName.map("internalname" ->)
-    }
-    Host(
-      name = name,
-      apps = appSet,
-      stage = stage,
-      stack = stack,
-      tags = tags
-    )
+  ) {
+    (name: String,
+     mainclasses: Option[Set[String]],
+     stack: Option[String],
+     app: Option[Seq[String]],
+     stage: String,
+     group: String,
+     createdAt: DateTime,
+     instanceName: Option[String],
+     internalName: Option[String],
+     dnsName: String) =>
+      val appSet: Set[App] = if (stack.isDefined && app.isDefined) {
+        app.get.map(appName => App(appName)).toSet
+      } else {
+        mainclasses.map(_.map(App)).getOrElse(Set.empty)
+      }
+      val tags = {
+        Map(
+          "group" -> group,
+          "created_at" -> formatter.print(
+            createdAt.toDateTime(DateTimeZone.UTC)),
+          "dnsname" -> dnsName
+        ) ++
+          instanceName.map("instancename" ->) ++
+          internalName.map("internalname" ->)
+      }
+      Host(
+        name = name,
+        apps = appSet,
+        stage = stage,
+        stack = stack,
+        tags = tags
+      )
   }
   implicit val dataReads = (
     (__ \ "key").read[String] and
       (__ \ "values").read[Seq[Datum]]
-    ) tupled
+  ) tupled
 
   def name = "Prism"
 
-  def lastUpdated: DateTime = prism.get("/sources?resource=instance"){ json =>
+  def lastUpdated: DateTime = prism.get("/sources?resource=instance") { json =>
     val sourceCreatedAt = json \ "data" match {
-      case JsDefined(JsArray(sources)) => sources.map { source => (source \ "state" \ "createdAt").as[DateTime] }
+      case JsDefined(JsArray(sources)) =>
+        sources.map { source =>
+          (source \ "state" \ "createdAt").as[DateTime]
+        }
       case _ => Seq(new DateTime(0))
     }
     sourceCreatedAt.minBy(_.getMillis)
   }
 
   def data = new DataLookup {
-    def keys: Seq[String] = prism.get("/data/keys"){ json => (json \ "data" \ "keys").as[Seq[String]] }
-    def all: Map[String, Seq[Datum]] = prism.get("/data?_expand"){ json =>
-      (json \ "data" \ "data").as[Seq[(String,Seq[Datum])]].toMap
+    def keys: Seq[String] = prism.get("/data/keys") { json =>
+      (json \ "data" \ "keys").as[Seq[String]]
     }
-    def datum(key: String, app: App, stage: Stage, stack: Stack): Option[Datum] = {
+    def all: Map[String, Seq[Datum]] = prism.get("/data?_expand") { json =>
+      (json \ "data" \ "data").as[Seq[(String, Seq[Datum])]].toMap
+    }
+    def datum(key: String,
+              app: App,
+              stage: Stage,
+              stack: Stack): Option[Datum] = {
       val query = stack match {
         case UnnamedStack =>
           s"/data/lookup/${key.urlEncode}?app=${app.name.urlEncode}&stage=${stage.name.urlEncode}"
         case NamedStack(stackName) =>
           s"/data/lookup/${key.urlEncode}?stack=${stackName.urlEncode}&app=${app.name.urlEncode}&stage=${stage.name.urlEncode}"
       }
-      prism.get(query){ json => (json \ "data").asOpt[Datum] }
+      prism.get(query) { json =>
+        (json \ "data").asOpt[Datum]
+      }
     }
 
   }
 
   def hosts = new HostLookup {
-    def parseHosts(json: JsValue, entity: String = "instances"):Seq[Host] = {
+    def parseHosts(json: JsValue, entity: String = "instances"): Seq[Host] = {
       val tryHosts = (json \ "data" \ entity).as[JsArray].value.map { jsHost =>
         Try {
           val host = jsHost.as[Host]
@@ -138,17 +166,21 @@ class PrismLookup(wsClient: WSClient, url: String, timeout: Duration) extends Lo
             case singleApp if singleApp.size == 1 => Seq(host)
             case noApps if noApps.isEmpty => Nil
             case multipleApps =>
-              multipleApps.toSeq.map( app => host.copy(apps = Set(app)))
+              multipleApps.toSeq.map(app => host.copy(apps = Set(app)))
           }
         }
       }
 
       val errors = tryHosts.flatMap {
-        case f@Failure(e) => Some(f)
+        case f @ Failure(e) => Some(f)
         case _ => None
       }
-      if (errors.nonEmpty) log.warn(s"Encountered ${errors.size} (of ${tryHosts.size}) $entity records that could not be parsed in Prism response")
-      if (log.isDebugEnabled) errors.foreach(e => log.debug("Couldn't parse instance from Prism data", e.exception))
+      if (errors.nonEmpty)
+        log.warn(
+          s"Encountered ${errors.size} (of ${tryHosts.size}) $entity records that could not be parsed in Prism response")
+      if (log.isDebugEnabled)
+        errors.foreach(e =>
+          log.debug("Couldn't parse instance from Prism data", e.exception))
 
       tryHosts.flatMap {
         case Success(hosts) => hosts
@@ -156,7 +188,11 @@ class PrismLookup(wsClient: WSClient, url: String, timeout: Duration) extends Lo
       }
     }
 
-    def get(pkg: DeploymentPackage, app: App, parameters: DeployParameters, stack: Stack, entity: String): Seq[Host] = {
+    def get(pkg: DeploymentPackage,
+            app: App,
+            parameters: DeployParameters,
+            stack: Stack,
+            entity: String): Seq[Host] = {
       val query = stack match {
         case UnnamedStack =>
           s"/$entity?_expand&stage=${parameters.stage.name.urlEncode}&mainclasses=${app.name.urlEncode}"
@@ -166,14 +202,20 @@ class PrismLookup(wsClient: WSClient, url: String, timeout: Duration) extends Lo
       prism.get(query)(js => parseHosts(js, entity))
     }
 
-    def get(pkg: DeploymentPackage, app: App, parameters: DeployParameters, stack: Stack): Seq[Host] = {
+    def get(pkg: DeploymentPackage,
+            app: App,
+            parameters: DeployParameters,
+            stack: Stack): Seq[Host] = {
       get(pkg, app, parameters, stack, "instances")
     }
 
-    def all: Seq[Host] = prism.get("/instances?_expand")(js => parseHosts(js, "instances"))
+    def all: Seq[Host] =
+      prism.get("/instances?_expand")(js => parseHosts(js, "instances"))
   }
 
-  def stages: Seq[String] = prism.get("/stages"){ json => (json \ "data" \ "stages").as[Seq[String]] }
+  def stages: Seq[String] = prism.get("/stages") { json =>
+    (json \ "data" \ "stages").as[Seq[String]]
+  }
 
   val secretProvider = new SecretProvider {
     def lookup(service: String, account: String): Option[String] =
@@ -181,12 +223,17 @@ class PrismLookup(wsClient: WSClient, url: String, timeout: Duration) extends Lo
   }
 
   private def get(region: String, tags: Map[String, String]): Seq[Image] = {
-    val params = tags.map{ case (key, value) => s"tags.${key.urlEncode}=${value.urlEncode}" }.mkString("&")
-    prism.get(s"/images?region=${region.urlEncode}&$params"){ json =>
+    val params = tags
+      .map { case (key, value) => s"tags.${key.urlEncode}=${value.urlEncode}" }
+      .mkString("&")
+    prism.get(s"/images?region=${region.urlEncode}&$params") { json =>
       (json \ "data" \ "images").as[Seq[Image]]
     }
   }
   def getLatestAmi(region: String)(tags: Map[String, String]): Option[String] =
-    get(region, tags).sortBy(-_.creationDate.getMillis).headOption.map(_.imageId)
+    get(region, tags)
+      .sortBy(-_.creationDate.getMillis)
+      .headOption
+      .map(_.imageId)
 
 }

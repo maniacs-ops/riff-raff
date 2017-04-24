@@ -1,12 +1,24 @@
 package controllers.forms
 
-import magenta.input.{All, DeploymentKey, DeploymentKeysSelector, DeploymentSelector}
+import magenta.input.{
+  All,
+  DeploymentKey,
+  DeploymentKeysSelector,
+  DeploymentSelector
+}
 import play.api.data.Form
 import play.api.data.Forms._
 import utils.Forms._
 
-case class DeployParameterForm(project:String, build:String, stage:String, recipe: Option[String], action: String,
-  hosts: List[String], stacks: List[String], selectedKeys: List[DeploymentKey], totalKeyCount: Option[Int]) {
+case class DeployParameterForm(project: String,
+                               build: String,
+                               stage: String,
+                               recipe: Option[String],
+                               action: String,
+                               hosts: List[String],
+                               stacks: List[String],
+                               selectedKeys: List[DeploymentKey],
+                               totalKeyCount: Option[Int]) {
 
   def makeSelector: DeploymentSelector = {
     val keysList =

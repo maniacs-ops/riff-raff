@@ -18,8 +18,10 @@ trait DynamoRepository {
   lazy val tableName = s"$tablePrefix-$stage"
 
   implicit val uuidFormat =
-    DynamoFormat.coercedXmap[UUID, String, IllegalArgumentException](UUID.fromString)(_.toString)
+    DynamoFormat.coercedXmap[UUID, String, IllegalArgumentException](
+      UUID.fromString)(_.toString)
 
   implicit val jodaStringFormat =
-    DynamoFormat.coercedXmap[DateTime, String, IllegalArgumentException](DateTime.parse)(_.toString)
+    DynamoFormat.coercedXmap[DateTime, String, IllegalArgumentException](
+      DateTime.parse)(_.toString)
 }

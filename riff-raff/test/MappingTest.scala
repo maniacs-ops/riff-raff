@@ -8,14 +8,27 @@ import java.util.UUID
 
 import magenta.input.{DeploymentKey, DeploymentKeysSelector, All}
 
-class MappingTest extends FlatSpec with Matchers with Utilities with PersistenceTestInstances with Logging {
+class MappingTest
+    extends FlatSpec
+    with Matchers
+    with Utilities
+    with PersistenceTestInstances
+    with Logging {
   "RecordConverter" should "transform a deploy record into a deploy document" in {
     RecordConverter(testRecord).deployDocument should be(
       DeployRecordDocument(
         testUUID,
         Some(testUUID.toString),
         testTime,
-        ParametersDocument("Tester", "test-project", "1", "CODE", "test-recipe", Nil, Nil, Map("branch"->"master"), AllDocument),
+        ParametersDocument("Tester",
+                           "test-project",
+                           "1",
+                           "CODE",
+                           "test-recipe",
+                           Nil,
+                           Nil,
+                           Map("branch" -> "master"),
+                           AllDocument),
         RunState.Completed
       )
     )
@@ -39,17 +52,20 @@ class MappingTest extends FlatSpec with Matchers with Utilities with Persistence
 
   it should "transfer the deploy UUID into the log documents" in {
     val logDocuments = RecordConverter(testRecord).logDocuments
-    logDocuments.foreach{ doc =>
+    logDocuments.foreach { doc =>
       doc.deploy should be(testRecord.uuid)
     }
   }
 
   it should "translate a deploy keys selector" in {
-    val deployKeysSelector = DeploymentKeysSelector(List(
-      DeploymentKey("testName", "actionOne", "stackOne", "testRegion"),
-      DeploymentKey("testName", "actionTwo", "stackTwo", "testRegion")
-    ))
-    val convertedSelector = RecordConverter(testRecord.copy(parameters = parameters.copy(selector = deployKeysSelector))).deployDocument.parameters.selector
+    val deployKeysSelector = DeploymentKeysSelector(
+      List(
+        DeploymentKey("testName", "actionOne", "stackOne", "testRegion"),
+        DeploymentKey("testName", "actionTwo", "stackTwo", "testRegion")
+      ))
+    val convertedSelector = RecordConverter(
+      testRecord.copy(parameters = parameters.copy(
+        selector = deployKeysSelector))).deployDocument.parameters.selector
     convertedSelector shouldBe DeploymentKeysSelectorDocument(List(
       DeploymentKeyDocument("testName", "actionOne", "stackOne", "testRegion"),
       DeploymentKeyDocument("testName", "actionTwo", "stackTwo", "testRegion")
@@ -60,8 +76,9 @@ class MappingTest extends FlatSpec with Matchers with Utilities with Persistence
     val tree = LogDocumentTree(logDocuments)
     tree.roots.size should be(1)
     tree.roots.head match {
-      case LogDocument(_, _, None, DeployDocument(),_) =>
-      case _ => fail("Didn't get the expected document when trying to locate the root")
+      case LogDocument(_, _, None, DeployDocument(), _) =>
+      case _ =>
+        fail("Didn't get the expected document when trying to locate the root")
     }
   }
 
@@ -122,14 +139,16 @@ class MappingTest extends FlatSpec with Matchers with Utilities with Persistence
       RunState.Completed
     )
     val logDocument = LogDocument(testUUID, id, None, Info("test"), testTime)
-    val wrapper = DocumentConverter(deployRecordDocument, List(logDocument)).deployRecord.messages.head
+    val wrapper =
+      DocumentConverter(deployRecordDocument, List(logDocument)).deployRecord.messages.head
     wrapper.context.deployId should be(testUUID)
     wrapper.messageId should be(id)
   }
 
   it should "invert the action of RecordConverter" in {
     val converter = RecordConverter(testRecord)
-    val record = DocumentConverter(converter.deployDocument, converter.logDocuments).deployRecord
+    val record = DocumentConverter(converter.deployDocument,
+                                   converter.logDocuments).deployRecord
     record should be(testRecord.copy(recordState = Some(RunState.Completed)))
   }
 }

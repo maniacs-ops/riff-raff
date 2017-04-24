@@ -17,25 +17,43 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 class PreviewController(coordinator: PreviewCoordinator)(
-  implicit val wsClient: WSClient, val messagesApi: MessagesApi
-) extends Controller with LoginActions with I18nSupport with Loggable {
-  def preview(projectName: String, buildId: String, stage: String, deployments: Option[String]) = AuthAction { request =>
+    implicit val wsClient: WSClient,
+    val messagesApi: MessagesApi
+) extends Controller
+    with LoginActions
+    with I18nSupport
+    with Loggable {
+  def preview(projectName: String,
+              buildId: String,
+              stage: String,
+              deployments: Option[String]) = AuthAction { request =>
     val build = Build(projectName, buildId)
     val selector = deployments.map(DeploymentKey.fromStringToList) match {
       case Some(head :: tail) => DeploymentKeysSelector(head :: tail)
       case _ => All
     }
-    val parameters = DeployParameters(Deployer(request.user.fullName), build, Stage(stage), selector = selector)
+    val parameters = DeployParameters(Deployer(request.user.fullName),
+                                      build,
+                                      Stage(stage),
+                                      selector = selector)
     coordinator.startPreview(parameters) match {
-      case Right(id) => Ok(views.html.preview.yaml.preview(request, parameters, id.toString))
+      case Right(id) =>
+        Ok(views.html.preview.yaml.preview(request, parameters, id.toString))
       case Left(error) =>
         // assume that this is not a YAML deployable and redirect to the legacy preview
         // if we came from the original process form then we'll have these extra params that we can use
-        val recipe = request.flash.data.getOrElse("previewRecipe", parameters.recipe.name)
-        val hosts = request.flash.data.getOrElse("previewHosts", parameters.hostList.mkString(","))
+        val recipe =
+          request.flash.data.getOrElse("previewRecipe", parameters.recipe.name)
+        val hosts = request.flash.data
+          .getOrElse("previewHosts", parameters.hostList.mkString(","))
         val stacks = request.flash.data.getOrElse("previewStacks", "")
-        Redirect(routes.DeployController.preview(parameters.build.projectName, parameters.build.id,
-          parameters.stage.name, recipe, hosts, stacks))
+        Redirect(
+          routes.DeployController.preview(parameters.build.projectName,
+                                          parameters.build.id,
+                                          parameters.stage.name,
+                                          recipe,
+                                          hosts,
+                                          stacks))
     }
   }
 
@@ -64,14 +82,20 @@ class PreviewController(coordinator: PreviewCoordinator)(
                   deploymentKeys,
                   totalKeyCount
                 ))
-              Ok(views.html.preview.yaml.showTasks(taskGraph, form, deploymentKeys))
-            case Invalid(errors) => Ok(views.html.validation.validationErrors(request, errors))
+              Ok(
+                views.html.preview.yaml
+                  .showTasks(taskGraph, form, deploymentKeys))
+            case Invalid(errors) =>
+              Ok(views.html.validation.validationErrors(request, errors))
           }
         }
       case Some(result) =>
-        Future.successful(Ok(views.html.preview.yaml.loading(request, result.duration.getStandardSeconds)))
+        Future.successful(
+          Ok(views.html.preview.yaml
+            .loading(request, result.duration.getStandardSeconds)))
       case None =>
-        Future.successful(NotFound(s"Preview with ID $previewId doesn't exist."))
+        Future.successful(
+          NotFound(s"Preview with ID $previewId doesn't exist."))
     }
   }
 }

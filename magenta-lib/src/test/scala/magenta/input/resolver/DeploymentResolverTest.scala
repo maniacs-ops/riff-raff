@@ -6,7 +6,10 @@ import magenta.input.{ConfigError, Deployment, RiffRaffYamlReader}
 import org.scalatest.{FlatSpec, ShouldMatchers}
 import play.api.libs.json.{JsNumber, JsString}
 
-class DeploymentResolverTest extends FlatSpec with ShouldMatchers with ValidatedValues {
+class DeploymentResolverTest
+    extends FlatSpec
+    with ShouldMatchers
+    with ValidatedValues {
   "DeploymentResolver" should "parse a simple deployment with defaults" in {
     val yamlString =
       """
@@ -20,8 +23,8 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with Validated
       """.stripMargin
     val yaml = RiffRaffYamlReader.fromString(yamlString)
     val deployments = yaml.andThen(DeploymentResolver.resolve).valid
-    deployments.size should be (1)
-    deployments.head should have (
+    deployments.size should be(1)
+    deployments.head should have(
       'type ("testType"),
       'stacks (NEL.of("testStack")),
       'regions (NEL.of("eu-west-1")),
@@ -46,8 +49,8 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with Validated
       """.stripMargin
     val yaml = RiffRaffYamlReader.fromString(yamlString)
     val deployments = yaml.andThen(DeploymentResolver.resolve).valid
-    deployments.size should be (1)
-    deployments.head should have (
+    deployments.size should be(1)
+    deployments.head should have(
       'type ("testType"),
       'stacks (NEL.of("stack1", "stack2")),
       'regions (NEL.of("oceania-south-1")),
@@ -75,8 +78,8 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with Validated
       """.stripMargin
     val yaml = RiffRaffYamlReader.fromString(yamlString)
     val deployments = yaml.andThen(DeploymentResolver.resolve).valid
-    deployments.size should be (1)
-    deployments.head should have (
+    deployments.size should be(1)
+    deployments.head should have(
       'type ("testType"),
       'stacks (NEL.of("testStack")),
       'regions (NEL.of("eurasia-north-1")),
@@ -106,15 +109,17 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with Validated
       """.stripMargin
     val yaml = RiffRaffYamlReader.fromString(yamlString)
     val deployments = yaml.andThen(DeploymentResolver.resolve).valid
-    deployments.size should be (1)
-    deployments.head should have (
+    deployments.size should be(1)
+    deployments.head should have(
       'type ("testType"),
       'stacks (NEL.of("testStack")),
       'regions (NEL.of("eu-west-1")),
       'app ("test"),
       'contentDirectory ("test"),
       'dependencies (Nil),
-      'parameters (Map("testParam" -> JsString("testValue"), "anotherParam" -> JsNumber(1984)))
+      'parameters (
+        Map("testParam" -> JsString("testValue"),
+            "anotherParam" -> JsNumber(1984)))
     )
   }
 
@@ -136,7 +141,7 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with Validated
       """.stripMargin
     val yaml = RiffRaffYamlReader.fromString(yamlString)
     val deployments = yaml.andThen(DeploymentResolver.resolve).valid
-    deployments.size should be (1)
+    deployments.size should be(1)
     deployments.head should have(
       'stacks (NEL.of("deployment-stack")),
       'regions (NEL.of("deployment-region"))
@@ -159,7 +164,7 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with Validated
       """.stripMargin
     val yaml = RiffRaffYamlReader.fromString(yamlString)
     val deployments = yaml.andThen(DeploymentResolver.resolve).valid
-    deployments.size should be (1)
+    deployments.size should be(1)
     deployments.head should have(
       'stacks (NEL.of("template-stack")),
       'regions (NEL.of("template-region"))
@@ -180,7 +185,7 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with Validated
       """.stripMargin
     val yaml = RiffRaffYamlReader.fromString(yamlString)
     val deployments = yaml.andThen(DeploymentResolver.resolve).valid
-    deployments.size should be (1)
+    deployments.size should be(1)
     deployments.head should have(
       'stacks (NEL.of("global-stack")),
       'regions (NEL.of("global-region"))
@@ -206,7 +211,7 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with Validated
       """.stripMargin
     val yaml = RiffRaffYamlReader.fromString(yamlString)
     val deployments = yaml.andThen(DeploymentResolver.resolve).valid
-    deployments.size should be (1)
+    deployments.size should be(1)
     deployments.head should have(
       'stacks (NEL.of("nested-template-stack")),
       'regions (NEL.of("template-region"))
@@ -242,15 +247,19 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with Validated
       """.stripMargin
     val yaml = RiffRaffYamlReader.fromString(yamlString)
     val deployments = yaml.andThen(DeploymentResolver.resolve).valid
-    deployments.size should be (1)
+    deployments.size should be(1)
     val deployment = deployments.head
     deployment.parameters.size should be(6)
     deployment.parameters should contain("nestedParameter" -> JsNumber(1984))
     deployment.parameters should contain("templateParameter" -> JsNumber(2016))
-    deployment.parameters should contain("deploymentParameter" -> JsNumber(1234))
-    deployment.parameters should contain("commonParameter" -> JsString("template"))
-    deployment.parameters should contain("allParameter" -> JsString("deployment"))
-    deployment.parameters should contain("sandwichParameter" -> JsString("deployment"))
+    deployment.parameters should contain(
+      "deploymentParameter" -> JsNumber(1234))
+    deployment.parameters should contain(
+      "commonParameter" -> JsString("template"))
+    deployment.parameters should contain(
+      "allParameter" -> JsString("deployment"))
+    deployment.parameters should contain(
+      "sandwichParameter" -> JsString("deployment"))
   }
 
   it should "not default actions, app and contentDirectory if specified in template" in {
@@ -270,7 +279,7 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with Validated
       """.stripMargin
     val yaml = RiffRaffYamlReader.fromString(yamlString)
     val deployments = yaml.andThen(DeploymentResolver.resolve).valid
-    deployments.size should be (1)
+    deployments.size should be(1)
     deployments.head should have(
       'app ("templateApp"),
       'actions (Some(NEL.of("templateAction"))),
@@ -303,7 +312,7 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with Validated
       """.stripMargin
     val yaml = RiffRaffYamlReader.fromString(yamlString)
     val deployments = yaml.andThen(DeploymentResolver.resolve).valid
-    deployments.size should be (4)
+    deployments.size should be(4)
     val deployment = deployments.find(_.name == "test").get
     deployment.dependencies should be(List("deployment-dep"))
   }
@@ -330,7 +339,7 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with Validated
       """.stripMargin
     val yaml = RiffRaffYamlReader.fromString(yamlString)
     val deployments = yaml.andThen(DeploymentResolver.resolve).valid
-    deployments.size should be (3)
+    deployments.size should be(3)
     val deployment = deployments.find(_.name == "test").get
     deployment.dependencies should be(List("template-dep"))
   }
@@ -354,7 +363,7 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with Validated
       """.stripMargin
     val yaml = RiffRaffYamlReader.fromString(yamlString)
     val deployments = yaml.andThen(DeploymentResolver.resolve).valid
-    deployments.size should be (2)
+    deployments.size should be(2)
     val deployment = deployments.find(_.name == "test").get
     deployment.dependencies should be(List("nested-dep"))
   }
@@ -376,8 +385,10 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with Validated
       """.stripMargin
     val yaml = RiffRaffYamlReader.fromString(yamlString)
     val configErrors = yaml.andThen(DeploymentResolver.resolve).invalid
-    configErrors.errors.toList.size should be (1)
-    configErrors.errors.head should be(ConfigError("test", "Template with name nonExistentTemplate does not exist"))
+    configErrors.errors.toList.size should be(1)
+    configErrors.errors.head should be(
+      ConfigError("test",
+                  "Template with name nonExistentTemplate does not exist"))
   }
 
   it should "report an error if a named dependency does not exist" in {
@@ -392,8 +403,9 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with Validated
       """.stripMargin
     val yaml = RiffRaffYamlReader.fromString(yamlString)
     val configErrors = yaml.andThen(DeploymentResolver.resolve).invalid
-    configErrors.errors.toList.size should be (1)
-    configErrors.errors.head should be(ConfigError("test", "Missing deployment dependencies missing-dep"))
+    configErrors.errors.toList.size should be(1)
+    configErrors.errors.head should be(
+      ConfigError("test", "Missing deployment dependencies missing-dep"))
 
   }
 
@@ -407,7 +419,8 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with Validated
       """.stripMargin
     val yaml = RiffRaffYamlReader.fromString(yamlString)
     val configErrors = yaml.andThen(DeploymentResolver.resolve).invalid
-    configErrors.errors.head should be(ConfigError("test", "No stacks provided"))
+    configErrors.errors.head should be(
+      ConfigError("test", "No stacks provided"))
   }
 
   it should "report an error if no regions are provided" in {
@@ -420,6 +433,7 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with Validated
       """.stripMargin
     val yaml = RiffRaffYamlReader.fromString(yamlString)
     val configErrors = yaml.andThen(DeploymentResolver.resolve).invalid
-    configErrors.errors.head should be(ConfigError("test", "No regions provided"))
+    configErrors.errors.head should be(
+      ConfigError("test", "No regions provided"))
   }
 }

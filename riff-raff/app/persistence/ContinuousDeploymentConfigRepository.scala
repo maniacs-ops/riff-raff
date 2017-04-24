@@ -9,7 +9,8 @@ import com.gu.scanamo.{DynamoFormat, Table}
 object ContinuousDeploymentConfigRepository extends DynamoRepository {
 
   implicit val triggerModeFormat =
-    DynamoFormat.coercedXmap[Trigger.Mode, String, NoSuchElementException](Trigger.withName)(_.toString)
+    DynamoFormat.coercedXmap[Trigger.Mode, String, NoSuchElementException](
+      Trigger.withName)(_.toString)
 
   override val tablePrefix = "continuous-deployment-config"
 

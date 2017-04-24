@@ -5,8 +5,11 @@ import java.util.UUID
 import magenta.graph.{DeploymentGraph, DeploymentTasks, Graph}
 
 object DeployContext {
-  def apply(deployId: UUID, parameters: DeployParameters, project: Project,
-    resources: DeploymentResources, region: Region): DeployContext = {
+  def apply(deployId: UUID,
+            parameters: DeployParameters,
+            project: Project,
+            resources: DeploymentResources,
+            region: Region): DeployContext = {
 
     val tasks = {
       resources.reporter.info("Resolving tasks...")
@@ -16,7 +19,9 @@ object DeployContext {
   }
 }
 
-case class DeployContext(uuid: UUID, parameters: DeployParameters, tasks: Graph[DeploymentTasks]) {
+case class DeployContext(uuid: UUID,
+                         parameters: DeployParameters,
+                         tasks: Graph[DeploymentTasks]) {
   val deployer = parameters.deployer
   val buildName = parameters.build.projectName
   val buildId = parameters.build.id
@@ -25,7 +30,9 @@ case class DeployContext(uuid: UUID, parameters: DeployParameters, tasks: Graph[
 
   def execute(reporter: DeployReporter) {
     val taskList = DeploymentGraph.toTaskList(tasks)
-    if (taskList.isEmpty) reporter.fail("No tasks were found to execute. Ensure the app(s) are in the list supported by this stage/host.")
+    if (taskList.isEmpty)
+      reporter.fail(
+        "No tasks were found to execute. Ensure the app(s) are in the list supported by this stage/host.")
 
     taskList.foreach { task =>
       reporter.taskContext(task) { taskLogger =>
@@ -35,4 +42,4 @@ case class DeployContext(uuid: UUID, parameters: DeployParameters, tasks: Graph[
   }
 }
 
-case class DeployStoppedException(message:String) extends Exception(message)
+case class DeployStoppedException(message: String) extends Exception(message)

@@ -32,11 +32,13 @@ object CIBuild extends Logging {
 
   val pollingPeriod = Configuration.build.pollingPeriodSeconds.seconds
 
-  lazy val jobs: Observable[Job] = builds.map(b => S3Project(b.jobId, b.jobName)).distinct.publish.refCount
+  lazy val jobs: Observable[Job] =
+    builds.map(b => S3Project(b.jobId, b.jobName)).distinct.publish.refCount
 
   lazy val newBuilds: Observable[CIBuild] = {
     val observable = (for {
-      location <- Every(pollingPeriod)(Observable.from(S3Build.buildJsons)).distinct if !initialFiles.contains(location)
+      location <- Every(pollingPeriod)(Observable.from(S3Build.buildJsons)).distinct
+      if !initialFiles.contains(location)
       build <- Observable.from(retrieveBuild(location))
     } yield build).publish
     observable.connect // make it a "hot" observable, i.e. it runs even if nobody is subscribed to it
@@ -51,17 +53,23 @@ object CIBuild extends Logging {
   } yield location
 
   lazy val initialBuilds: Future[Seq[CIBuild]] = {
-    implicit val ec = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(50))
+    implicit val ec =
+      ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(50))
     log.logger.info(s"Found ${initialFiles.length} builds to parse")
-    (Future.traverse(initialFiles)(l => Future(retrieveBuild(l)))).map(_.flatten)
+    (Future
+      .traverse(initialFiles)(l => Future(retrieveBuild(l))))
+      .map(_.flatten)
   }
 
   private def retrieveBuild(location: S3Object): Option[CIBuild] = {
     import cats.syntax.either._
-    S3Build.buildAt(location)
-      .leftMap(e => log.error(s"Problem getting build definition from $location: $e"))
+    S3Build
+      .buildAt(location)
+      .leftMap(e =>
+        log.error(s"Problem getting build definition from $location: $e"))
       .toOption
   }
 
-  lazy val builds: Observable[CIBuild] = Observable.from(initialBuilds).flatMap(Observable.from(_)).merge(newBuilds)
+  lazy val builds: Observable[CIBuild] =
+    Observable.from(initialBuilds).flatMap(Observable.from(_)).merge(newBuilds)
 }

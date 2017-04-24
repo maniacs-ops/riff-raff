@@ -43,13 +43,14 @@ object Dependencies {
     "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % Versions.jackson,
     "com.fasterxml.jackson.core" % "jackson-databind" % Versions.jackson,
     "com.typesafe.play" %% "play-json" % Versions.play
-  ).map((m: ModuleID) =>
-    // don't even ask why I need to do this
-    m.excludeAll(ExclusionRule(organization = "com.google.code.findbugs", name = "jsr305"))
-  )
+  ).map(
+    (m: ModuleID) =>
+      // don't even ask why I need to do this
+      m.excludeAll(ExclusionRule(organization = "com.google.code.findbugs",
+                                 name = "jsr305")))
 
   val riffRaffDeps = commonDeps ++ Seq(
-    "com.gu" %% "management-play" % Versions.guardianManagementPlay exclude("javassist", "javassist"), // http://code.google.com/p/reflections/issues/detail?id=140
+    "com.gu" %% "management-play" % Versions.guardianManagementPlay exclude ("javassist", "javassist"), // http://code.google.com/p/reflections/issues/detail?id=140
     "com.gu" %% "management-logback" % Versions.guardianManagement,
     "com.gu" %% "configuration" % "4.0",
     "com.gu" %% "play-googleauth" % "0.5.1",
@@ -69,9 +70,10 @@ object Dependencies {
     ws,
     "com.typesafe.akka" %% "akka-testkit" % "2.4.10" % Test,
     "org.gnieh" %% "diffson" % "2.0.2" % Test
-  ).map((m: ModuleID) =>
-    // don't even ask why I need to do this
-    m.excludeAll(ExclusionRule(organization = "com.google.code.findbugs", name = "jsr305"))
-  )
+  ).map(
+    (m: ModuleID) =>
+      // don't even ask why I need to do this
+      m.excludeAll(ExclusionRule(organization = "com.google.code.findbugs",
+                                 name = "jsr305")))
 
 }

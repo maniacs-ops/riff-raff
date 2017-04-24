@@ -15,13 +15,20 @@ import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
 
 object DeployCoordinatorTest {
-  lazy val testConfig = ConfigFactory.parseMap(
-    Map("akka.test.single-expect-default" -> "500").asJava
-  ).withFallback(ConfigFactory.load())
+  lazy val testConfig = ConfigFactory
+    .parseMap(
+      Map("akka.test.single-expect-default" -> "500").asJava
+    )
+    .withFallback(ConfigFactory.load())
 }
 
-class DeployCoordinatorTest extends TestKit(ActorSystem("DeployCoordinatorTest", DeployCoordinatorTest.testConfig))
-  with FlatSpecLike with Matchers with BeforeAndAfterAll with MockitoSugar {
+class DeployCoordinatorTest
+    extends TestKit(
+      ActorSystem("DeployCoordinatorTest", DeployCoordinatorTest.testConfig))
+    with FlatSpecLike
+    with Matchers
+    with BeforeAndAfterAll
+    with MockitoSugar {
 
   import Fixtures._
 
@@ -34,7 +41,7 @@ class DeployCoordinatorTest extends TestKit(ActorSystem("DeployCoordinatorTest",
     val record = createRecord()
     dc.actor ! DeployCoordinator.StartDeploy(record)
 
-    dc.deployProbe.expectMsgPF(){
+    dc.deployProbe.expectMsgPF() {
       case DeployGroupRunner.Start =>
     }
 
@@ -45,8 +52,8 @@ class DeployCoordinatorTest extends TestKit(ActorSystem("DeployCoordinatorTest",
 
   it should "queue a StartDeploy message if the deploy is already running" in {
     val dc = createDeployCoordinatorWithUnderlying()
-    val record = createRecord(projectName="test", stage="TEST")
-    val recordTwo = createRecord(projectName="test", stage="TEST")
+    val record = createRecord(projectName = "test", stage = "TEST")
+    val recordTwo = createRecord(projectName = "test", stage = "TEST")
 
     dc.actor ! DeployCoordinator.StartDeploy(record)
     dc.deployProbe.expectMsg(DeployGroupRunner.Start)
@@ -54,14 +61,15 @@ class DeployCoordinatorTest extends TestKit(ActorSystem("DeployCoordinatorTest",
     dc.actor ! DeployCoordinator.StartDeploy(recordTwo)
     dc.deployProbe.expectNoMsg()
     dc.ul.deferredDeployQueue.size should be(1)
-    dc.ul.deferredDeployQueue.head should be(DeployCoordinator.StartDeploy(recordTwo))
+    dc.ul.deferredDeployQueue.head should be(
+      DeployCoordinator.StartDeploy(recordTwo))
   }
 
   it should "queue a StartDeploy message if there are already too many running" in {
     val dc = createDeployCoordinatorWithUnderlying(2)
-    val record = createRecord(projectName="test", stage="TEST")
-    val recordTwo = createRecord(projectName="test2", stage="TEST")
-    val recordThree = createRecord(projectName="test3", stage="TEST")
+    val record = createRecord(projectName = "test", stage = "TEST")
+    val recordTwo = createRecord(projectName = "test2", stage = "TEST")
+    val recordThree = createRecord(projectName = "test3", stage = "TEST")
 
     dc.actor ! DeployCoordinator.StartDeploy(record)
     dc.deployProbe.expectMsg(DeployGroupRunner.Start)
@@ -74,20 +82,22 @@ class DeployCoordinatorTest extends TestKit(ActorSystem("DeployCoordinatorTest",
     dc.actor ! DeployCoordinator.StartDeploy(recordThree)
     dc.deployProbe.expectNoMsg()
     dc.ul.deferredDeployQueue.size should be(1)
-    dc.ul.deferredDeployQueue.head should be(DeployCoordinator.StartDeploy(recordThree))
+    dc.ul.deferredDeployQueue.head should be(
+      DeployCoordinator.StartDeploy(recordThree))
   }
 
   it should "dequeue StartDeploy messages when deploys complete" in {
     val dc = createDeployCoordinatorWithUnderlying()
-    val record = createRecord(projectName="test", stage="TEST")
-    val recordTwo = createRecord(projectName="test", stage="TEST")
+    val record = createRecord(projectName = "test", stage = "TEST")
+    val recordTwo = createRecord(projectName = "test", stage = "TEST")
 
     dc.actor ! DeployCoordinator.StartDeploy(record)
     dc.actor ! DeployCoordinator.StartDeploy(recordTwo)
 
     dc.deployProbe.expectMsg(DeployGroupRunner.Start)
     dc.ul.deferredDeployQueue.size should be(1)
-    dc.ul.deferredDeployQueue.head should be(DeployCoordinator.StartDeploy(recordTwo))
+    dc.ul.deferredDeployQueue.head should be(
+      DeployCoordinator.StartDeploy(recordTwo))
 
     dc.deployProbe.expectNoMsg()
     dc.actor ! DeployCoordinator.CleanupDeploy(record.uuid)
@@ -100,23 +110,38 @@ class DeployCoordinatorTest extends TestKit(ActorSystem("DeployCoordinatorTest",
 
   def createDeployCoordinator(maxDeploys: Int = 5) = {
     val deployGroupProbe = TestProbe()
-    val deployGroupRunnerFactory = (_: ActorRefFactory, record: Record, _: ActorRef) => deployGroupProbe.ref
+    val deployGroupRunnerFactory =
+      (_: ActorRefFactory, record: Record, _: ActorRef) => deployGroupProbe.ref
     val stopFlagAgent = Agent(Map.empty[UUID, String])
-    val ref = system.actorOf(Props(classOf[DeployCoordinator], deployGroupRunnerFactory, maxDeploys, stopFlagAgent))
+    val ref = system.actorOf(
+      Props(classOf[DeployCoordinator],
+            deployGroupRunnerFactory,
+            maxDeploys,
+            stopFlagAgent))
     DC(deployGroupProbe, ref)
   }
 
-  case class DCwithUnderlying(deployProbe: TestProbe, actor: ActorRef, ul: DeployCoordinator, deployRunnerRecords: mutable.Set[Record])
+  case class DCwithUnderlying(deployProbe: TestProbe,
+                              actor: ActorRef,
+                              ul: DeployCoordinator,
+                              deployRunnerRecords: mutable.Set[Record])
 
   def createDeployCoordinatorWithUnderlying(maxDeploys: Int = 5) = {
     val deployProbe = TestProbe()
     val deployRunnerRecords = mutable.Set.empty[Record]
-    val deployGroupRunnerFactory = (_: ActorRefFactory, record: Record, _: ActorRef) => {
-      deployRunnerRecords.add(record)
-      deployProbe.ref
-    }
+    val deployGroupRunnerFactory =
+      (_: ActorRefFactory, record: Record, _: ActorRef) => {
+        deployRunnerRecords.add(record)
+        deployProbe.ref
+      }
     val stopFlagAgent = Agent(Map.empty[UUID, String])
-    val ref = TestActorRef(new DeployCoordinator(deployGroupRunnerFactory, maxDeploys, stopFlagAgent))
-    DCwithUnderlying(deployProbe, ref, ref.underlyingActor, deployRunnerRecords)
+    val ref = TestActorRef(
+      new DeployCoordinator(deployGroupRunnerFactory,
+                            maxDeploys,
+                            stopFlagAgent))
+    DCwithUnderlying(deployProbe,
+                     ref,
+                     ref.underlyingActor,
+                     deployRunnerRecords)
   }
 }

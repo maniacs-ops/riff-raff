@@ -9,13 +9,26 @@ import magenta.artifact.S3YamlArtifact
 import magenta.fixtures.{ValidatedValues, _}
 import magenta.graph.{DeploymentTasks, EndNode, Graph, StartNode, ValueNode}
 import magenta.input.DeploymentKey
-import magenta.{Build, DeployParameters, DeployReporter, Deployer, DeploymentResources, Region, Stage}
+import magenta.{
+  Build,
+  DeployParameters,
+  DeployReporter,
+  Deployer,
+  DeploymentResources,
+  Region,
+  Stage
+}
 import org.scalatest.mock.MockitoSugar
 import org.scalatest.{FlatSpec, Matchers}
 
-class PreviewTest extends FlatSpec with Matchers with ValidatedValues with MockitoSugar {
+class PreviewTest
+    extends FlatSpec
+    with Matchers
+    with ValidatedValues
+    with MockitoSugar {
   def valid(n: Int): Validated[NEL[String], Int] = Valid(n)
-  def invalid(error: String): Validated[NEL[String], Int] = Invalid(NEL.of(error))
+  def invalid(error: String): Validated[NEL[String], Int] =
+    Invalid(NEL.of(error))
 
   "sequenceGraph" should "invert a graph with only Valid nodes" in {
     val g = Graph.from(Seq(valid(1), valid(2), valid(3)))
@@ -29,11 +42,15 @@ class PreviewTest extends FlatSpec with Matchers with ValidatedValues with Mocki
   }
 
   it should "invert a graph with multiple Invalid nodes" in {
-    val g = Graph.from(Seq(valid(1), invalid("error-one"), valid(3), valid(4), invalid("error-two")))
+    val g = Graph.from(
+      Seq(valid(1),
+          invalid("error-one"),
+          valid(3),
+          valid(4),
+          invalid("error-two")))
     val inverted = Preview.sequenceGraph(g)
     inverted.invalid shouldBe NEL.of("error-one", "error-two")
   }
-
 
   implicit val artifactClient = mock[AmazonS3Client]
 
@@ -47,17 +64,33 @@ class PreviewTest extends FlatSpec with Matchers with ValidatedValues with Mocki
         |  testDeployment:
         |    type: stub-package-type
       """.stripMargin
-    val parameters = DeployParameters(Deployer("test user"), Build("testProject", "1"), Stage("TEST"))
-    val reporter = DeployReporter.rootReporterFor(UUID.randomUUID(), parameters)
+    val parameters = DeployParameters(Deployer("test user"),
+                                      Build("testProject", "1"),
+                                      Stage("TEST"))
+    val reporter =
+      DeployReporter.rootReporterFor(UUID.randomUUID(), parameters)
     val resources = DeploymentResources(reporter, stubLookup(), artifactClient)
-    val preview = Preview(artifact, config, parameters, resources, Seq(stubDeploymentType(Seq("testAction"))))
+    val preview = Preview(artifact,
+                          config,
+                          parameters,
+                          resources,
+                          Seq(stubDeploymentType(Seq("testAction"))))
 
     val deploymentTuple = (
       DeploymentKey("testDeployment", "testAction", "testStack", "testRegion"),
-      DeploymentTasks(List(
-        StubTask("testAction per app task number one", Region("testRegion"), None, None),
-        StubTask("testAction per app task number two", Region("testRegion"), None, None)
-      ), "testDeployment [testAction] => testRegion/testStack")
+      DeploymentTasks(
+        List(
+          StubTask("testAction per app task number one",
+                   Region("testRegion"),
+                   None,
+                   None),
+          StubTask("testAction per app task number two",
+                   Region("testRegion"),
+                   None,
+                   None)
+        ),
+        "testDeployment [testAction] => testRegion/testStack"
+      )
     )
 
     preview.graph.valid shouldBe Graph(

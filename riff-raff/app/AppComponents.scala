@@ -21,23 +21,36 @@ import scala.concurrent.duration._
 
 import router.Routes
 
-class AppComponents(context: Context) extends BuiltInComponentsFromContext(context)
-  with AhcWSComponents
-  with I18nComponents
-  with CSRFComponents
-  with GzipFilterComponents {
+class AppComponents(context: Context)
+    extends BuiltInComponentsFromContext(context)
+    with AhcWSComponents
+    with I18nComponents
+    with CSRFComponents
+    with GzipFilterComponents {
 
   implicit val implicitMessagesApi = messagesApi
   implicit val implicitWsClient = wsClient
 
   val availableDeploymentTypes = Seq(
-    ElasticSearch, S3, AutoScaling, Fastly, CloudFormation, Lambda, AmiCloudFormationParameter, SelfDeploy
+    ElasticSearch,
+    S3,
+    AutoScaling,
+    Fastly,
+    CloudFormation,
+    Lambda,
+    AmiCloudFormationParameter,
+    SelfDeploy
   )
-  val prismLookup = new PrismLookup(wsClient, conf.Configuration.lookup.prismUrl, conf.Configuration.lookup.timeoutSeconds.seconds)
-  val deploymentEngine = new DeploymentEngine(prismLookup, availableDeploymentTypes)
+  val prismLookup = new PrismLookup(
+    wsClient,
+    conf.Configuration.lookup.prismUrl,
+    conf.Configuration.lookup.timeoutSeconds.seconds)
+  val deploymentEngine =
+    new DeploymentEngine(prismLookup, availableDeploymentTypes)
   val deployments = new Deployments(deploymentEngine)
   val continuousDeployment = new ContinuousDeployment(deployments)
-  val previewCoordinator = new PreviewCoordinator(prismLookup, availableDeploymentTypes)
+  val previewCoordinator =
+    new PreviewCoordinator(prismLookup, availableDeploymentTypes)
 
   override lazy val httpFilters = Seq(
     csrfFilter,
@@ -45,8 +58,11 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
     new HstsFilter
   ) // TODO (this would require an upgrade of the management-play lib) ++ PlayRequestMetrics.asFilters
 
-  val applicationController = new Application(prismLookup, availableDeploymentTypes)(environment, wsClient)
-  val deployController = new DeployController(deployments, prismLookup, availableDeploymentTypes)
+  val applicationController =
+    new Application(prismLookup, availableDeploymentTypes)(environment,
+                                                           wsClient)
+  val deployController =
+    new DeployController(deployments, prismLookup, availableDeploymentTypes)
   val apiController = new Api(deployments, availableDeploymentTypes)
   val continuousDeployController = new ContinuousDeployController(prismLookup)
   val previewController = new PreviewController(previewCoordinator)
@@ -56,11 +72,17 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
   val testingController = new Testing(prismLookup)
   val assets = new Assets(httpErrorHandler)
 
-  override lazy val httpErrorHandler = new DefaultHttpErrorHandler(environment, configuration, sourceMapper, Some(router)) {
-    override def onServerError(request: RequestHeader, t: Throwable): Future[Result] = {
+  override lazy val httpErrorHandler = new DefaultHttpErrorHandler(
+    environment,
+    configuration,
+    sourceMapper,
+    Some(router)) {
+    override def onServerError(request: RequestHeader,
+                               t: Throwable): Future[Result] = {
       Logger.error("Error whilst trying to serve request", t)
       val reportException = if (t.getCause != null) t.getCause else t
-      Future.successful(InternalServerError(views.html.errorPage(reportException)))
+      Future.successful(
+        InternalServerError(views.html.errorPage(reportException)))
     }
   }
 
